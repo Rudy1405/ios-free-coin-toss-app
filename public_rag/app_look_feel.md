@@ -77,10 +77,11 @@ Los 12 frames del giro (`flip_sequence/frame_00..11.png`) aplican, por
 frame `i`, un único ángulo `angle = i * π/6` (30° por frame, 360° en total)
 del que salen dos cosas a la vez:
 
-- **Squish horizontal** — `squishX = |cos(angle)|` (con piso 0.08 para que
-  el canto nunca desaparezca del todo) simula la moneda girando sobre su
-  eje vertical: ancho completo en `frame_00` (cara) y `frame_06` (cruz),
-  una elipse casi nula en `frame_03`/`frame_09` (de canto).
+- **Squish vertical** — `squish = |cos(angle)|` (con piso 0.08 para que el
+  canto nunca desaparezca del todo) simula la moneda tumbando de punta a
+  punta en el aire (no girando plana como un trompo, que sería squish
+  horizontal): alto completo en `frame_00` (cara) y `frame_06` (cruz), una
+  elipse achatada casi nula en `frame_03`/`frame_09` (de canto).
 - **Blend de color** — `colorT = (1 - cos(angle)) / 2` mezcla `_caraColor`
   → `_cruzColor` con el mismo ángulo, y el canto además se oscurece
   (`edgeShade`) porque una moneda de canto está en sombra.

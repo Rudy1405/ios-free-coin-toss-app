@@ -9,10 +9,10 @@ import 'dart:typed_data';
 ///
 /// Each PNG is a transparent-background RGBA circle shaded like a metal
 /// coin (offset highlight + rim shadow + a soft drop shadow underneath).
-/// The 12 flip frames get a progressive horizontal squish
-/// (`|cos(angle)|`, one 30° step per frame) to fake the coin turning
-/// edge-on as it spins, and their base color blends from cara to cruz and
-/// back across that same angle.
+/// The 12 flip frames get a progressive vertical squish (`|cos(angle)|`,
+/// one 30° step per frame) to fake the coin tumbling end-over-end through
+/// the air, and their base color blends from cara to cruz and back across
+/// that same angle.
 ///
 /// Colors must match `CoinPalette` in lib/core/theme.dart — this script
 /// can't import Flutter code, so the hex values are duplicated here on
@@ -32,39 +32,42 @@ void main() {
 
   for (var i = 0; i < _frameCount; i++) {
     final angle = i * math.pi / 6; // 30° per frame, 360° over the sequence
-    final squishX = _clampD(math.cos(angle).abs(), 0.08, 1.0);
+    final squish = _clampD(math.cos(angle).abs(), 0.08, 1.0);
     final colorT = (1 - math.cos(angle)) / 2; // 0 = cara, 1 = cruz
-    final edgeShade = 0.55 + 0.45 * squishX; // the thin edge sits in shadow
+    final edgeShade = 0.55 + 0.45 * squish; // the thin edge sits in shadow
 
     final frameColor = _lerpRgb(_caraColor, _cruzColor, colorT)
         .map((c) => _clampI((c * edgeShade).round(), 0, 255))
         .toList();
 
     final name = 'frame_${i.toString().padLeft(2, '0')}.png';
-    _writeCoin('$base/assets/coin/flip_sequence/$name', frameColor, squishX);
+    _writeCoin('$base/assets/coin/flip_sequence/$name', frameColor, squish);
   }
 
   // ignore: avoid_print
   print('Generated 14 placeholder coin PNGs (2 faces + 12 flip frames)');
 }
 
-/// Draws a shaded metallic circle (squished horizontally by [squishX], 1.0
-/// = full face-on) with a soft drop shadow, on a transparent canvas.
-void _writeCoin(String path, List<int> baseColor, double squishX) {
+/// Draws a shaded metallic circle (squished vertically by [squish], 1.0 =
+/// full face-on) with a soft drop shadow, on a transparent canvas. The
+/// vertical squish simulates a coin tumbling end-over-end through the air
+/// (as opposed to spinning flat like a top, which would squish sideways).
+void _writeCoin(String path, List<int> baseColor, double squish) {
   const size = _canvasSize;
   final pixels = Uint8List(size * size * 4);
 
   const cx = size / 2, cy = size / 2;
   const r = size * 0.42;
-  final rx = r * squishX;
-  const ry = r;
+  const rx = r;
+  final ry = r * squish;
 
   final highlight = _lighten(baseColor, 0.55);
   final shadow = _darken(baseColor, 0.55);
   final rim = _darken(baseColor, 0.75);
 
-  const shadowCx = cx, shadowCy = cy + ry; // just under the coin's rim
-  final shadowRx = math.max(rx * 0.75, r * 0.10);
+  const shadowCx = cx;
+  final shadowCy = cy + ry; // just under the coin's rim
+  const shadowRx = rx * 0.75;
   const shadowRy = r * 0.13;
 
   for (var y = 0; y < size; y++) {
