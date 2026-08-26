@@ -4,34 +4,38 @@ import 'dart:typed_data';
 /// Generates minimal placeholder PNG files for the coin flip animation.
 /// Each file is a 300x300 solid-color PNG with no text (text would require
 /// a full font renderer). Files are color-coded for easy identification:
-/// - cara: gold (#FFD700)
-/// - cruz: silver (#C0C0C0)
-/// - flip frames: gradient from gold to silver and back
+/// - cara: metallic gold (#D6AD60) — paleta P1 "Oro y Grafito"
+/// - cruz: metallic blue-silver (#8FA3C2) — paleta P2 "Plata Azulada"
+/// - flip frames: gradient from gold to blue-silver and back
+///
+/// Estos hex deben coincidir con CoinPalette en lib/core/theme.dart y con
+/// public_rag/app_look_feel.md — este script no puede importar ese archivo
+/// porque corre con `dart run` fuera del SDK de Flutter.
 
 void main() {
   final base = Directory.current.path;
 
-  // Generate cara face (gold)
-  _writePng('$base/assets/coin/cara/cara.png', 300, 300, [0xFF, 0xD7, 0x00]);
+  // Generate cara face (metallic gold)
+  _writePng('$base/assets/coin/cara/cara.png', 300, 300, [0xD6, 0xAD, 0x60]);
 
-  // Generate cruz face (silver)
-  _writePng('$base/assets/coin/cruz/cruz.png', 300, 300, [0xC0, 0xC0, 0xC0]);
+  // Generate cruz face (metallic blue-silver)
+  _writePng('$base/assets/coin/cruz/cruz.png', 300, 300, [0x8F, 0xA3, 0xC2]);
 
   // Generate 12 flip frames with color transition
-  // Simulates: cara(gold) -> edge(thin/dark) -> cruz(silver) -> edge -> cara
+  // Simulates: cara(gold) -> edge(thin/dark) -> cruz(blue-silver) -> edge -> cara
   final frameColors = <List<int>>[
-    [0xFF, 0xD7, 0x00], // frame_00: full cara (gold)
-    [0xE6, 0xC1, 0x00], // frame_01: cara tilting
-    [0xBF, 0xA0, 0x00], // frame_02: cara foreshortened
-    [0x80, 0x80, 0x40], // frame_03: edge view
-    [0x40, 0x40, 0x40], // frame_04: thin edge (dark)
-    [0x80, 0x80, 0x80], // frame_05: edge opening to cruz
-    [0xC0, 0xC0, 0xC0], // frame_06: full cruz (silver)
-    [0xA0, 0xA0, 0xA0], // frame_07: cruz tilting
-    [0x80, 0x80, 0x80], // frame_08: cruz foreshortened
-    [0x40, 0x40, 0x40], // frame_09: thin edge (dark)
-    [0x80, 0x80, 0x40], // frame_10: edge opening to cara
-    [0xFF, 0xD7, 0x00], // frame_11: full cara again (gold)
+    [0xD6, 0xAD, 0x60], // frame_00: full cara (metallic gold)
+    [0xB8, 0x95, 0x52], // frame_01: cara tilting
+    [0x8C, 0x76, 0x40], // frame_02: cara foreshortened
+    [0x5C, 0x5C, 0x58], // frame_03: edge view
+    [0x3A, 0x3A, 0x3C], // frame_04: thin edge (dark)
+    [0x5C, 0x66, 0x70], // frame_05: edge opening to cruz
+    [0x8F, 0xA3, 0xC2], // frame_06: full cruz (metallic blue-silver)
+    [0x78, 0x90, 0xAC], // frame_07: cruz tilting
+    [0x5F, 0x75, 0x90], // frame_08: cruz foreshortened
+    [0x3A, 0x3A, 0x3C], // frame_09: thin edge (dark)
+    [0x5C, 0x58, 0x50], // frame_10: edge opening to cara
+    [0xD6, 0xAD, 0x60], // frame_11: full cara again (metallic gold)
   ];
 
   for (var i = 0; i < frameColors.length; i++) {

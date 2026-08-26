@@ -56,6 +56,10 @@ Flujo de estado entre capas, de arriba a abajo:
 
 **Inyección de `HistoryRepository`:** se registra como `Provider` que lanza `UnimplementedError` por defecto y se sobreescribe en `main.dart` con la instancia real de Hive. Los tests (`widget_test.dart`) inyectan un `FakeHistoryRepository` de la misma forma, sin tocar Hive.
 
+## Look & feel
+
+@public_rag/app_look_feel.md
+
 ## Gotchas del entorno (Windows)
 
 - Compilar/correr para **Windows desktop o Android** requiere symlinks, lo que a su vez requiere "Modo de programador" activado en Windows (Configuración → Para desarrolladores). No se puede activar por script sin privilegios de administrador (clave en `HKLM`). **Web** (`flutter run -d chrome`) y `flutter analyze`/`flutter test` no lo necesitan.
