@@ -8,7 +8,11 @@ Origen: propuesta generada con `ui-ux-pro-max` (paletas P1/P2, material E1/E2,
 tipografía T1/T2, historial L1/L2), revisada y recortada por el usuario el
 2026-08-26. Selección aplicada: **P1+P2 condicionados por cara, E2, T1, H2,
 H4, L2**. `H1`, `H3`, `E1`, `L1`, `P2` en su variante índigo original y `T2`
-quedaron fuera (T2 documentado abajo para una futura implementación).
+quedaron fuera (T2 documentado abajo para una futura implementación). El
+mismo día, en una segunda pasada, el usuario pidió reemplazar el placeholder
+cuadrado por una moneda circular con sombreado metálico y extender la
+paleta condicional al fondo de la app — ver "Assets de la moneda" y "Fondo
+condicional" más abajo.
 
 ## Principio rector
 
@@ -37,23 +41,53 @@ variante índigo en el futuro, tratarla como `P2b`, no como reemplazo de esta.
 derivan del `accent` en tiempo de uso — no se guardan como constantes
 aparte.
 
-Fondo de la app: **sin cambios**, sigue siendo `AppTheme.darkBackground`
-(`#1C1C1E`). El acento nunca reemplaza el fondo de sistema.
+### Fondo condicional
+
+`CoinPalette` también trae `backgroundTop`/`backgroundBottom`: un degradado
+vertical Cupertino oscuro (más claro arriba, más oscuro abajo) que reemplazó
+el `AppTheme.darkBackground` (`#1C1C1E`) fijo. Se aplica en `CoinScreen.build`
+con un `AnimatedContainer` (500ms, `Curves.easeInOut`) que envuelve el
+`SafeArea` — el `CupertinoPageScaffold` pasa a `backgroundColor: transparent`
+para dejarlo ver.
+
+| Cara | `backgroundTop` | `backgroundBottom` |
+|---|---|---|
+| CARA (P1) | `#19191D` | `#101012` |
+| CRUZ (P2) | `#1C1A30` | `#0B0B12` |
+
+P1 es casi neutro (un gris carbón con la tibieza justa para no chocar con el
+oro); P2 lleva un tinte índigo perceptible — así el fondo de CRUZ se nota
+más "propio" que el de CARA, que replica el Cupertino oscuro base. Sigue el
+mismo `CoinPalette.forResult(coinState.lastResult)` que el resto de los
+acentos: en `idle` (antes del primer tiro) muestra el fondo P1 por defecto.
 
 ### Assets de la moneda
 
-`generate_placeholders.dart` escribe los PNG placeholder (no usa el paquete
-`image`, ver Gotchas en `CLAUDE.md`) y mantiene **sus propios literales RGB**
-porque corre con `dart run` fuera del SDK de Flutter y no puede importar
-`CoinPalette`. Si se cambia un hex acá, hay que replicarlo a mano en ese
-script y correr `dart run generate_placeholders.dart` para regenerar los 14
-PNG:
+`generate_placeholders.dart` ya no dibuja un cuadrado de color plano: renderiza
+a mano (sin el paquete `image`, ver Gotchas en `CLAUDE.md`) un círculo RGBA
+sombreado como metal — highlight desplazado arriba-izquierda, degradé hacia
+un borde más oscuro, un aro (`rim`) todavía más oscuro cerca del canto, y una
+sombra suave debajo — sobre fondo transparente. Mantiene **sus propios
+literales RGB** porque corre con `dart run` fuera del SDK de Flutter y no
+puede importar `CoinPalette`. Si se cambia un hex de paleta, hay que
+replicarlo a mano en `_caraColor`/`_cruzColor` de ese script y correr
+`dart run generate_placeholders.dart` para regenerar los 14 PNG.
 
-- `cara.png` → `#D6AD60`
-- `cruz.png` → `#8FA3C2`
-- `flip_sequence/frame_00,01,02,11` (lado cara) → degradé cálido hacia `#D6AD60`
-- `flip_sequence/frame_06,07,08` (lado cruz) → degradé frío hacia `#8FA3C2`
-- `flip_sequence/frame_03,04,05,09,10` (canto) → neutros sin tinte (el canto de una moneda no tiene cara)
+Los 12 frames del giro (`flip_sequence/frame_00..11.png`) aplican, por
+frame `i`, un único ángulo `angle = i * π/6` (30° por frame, 360° en total)
+del que salen dos cosas a la vez:
+
+- **Squish horizontal** — `squishX = |cos(angle)|` (con piso 0.08 para que
+  el canto nunca desaparezca del todo) simula la moneda girando sobre su
+  eje vertical: ancho completo en `frame_00` (cara) y `frame_06` (cruz),
+  una elipse casi nula en `frame_03`/`frame_09` (de canto).
+- **Blend de color** — `colorT = (1 - cos(angle)) / 2` mezcla `_caraColor`
+  → `_cruzColor` con el mismo ángulo, y el canto además se oscurece
+  (`edgeShade`) porque una moneda de canto está en sombra.
+
+Si se retoca el sombreado (highlight, rim, sombra) o el squish, hacerlo en
+`_writeCoin`/`main()` de `generate_placeholders.dart` — es la única fuente
+de verdad para el render, no hay assets de arte por fuera de este script.
 
 ## Material — vidrio con relieve (E2)
 

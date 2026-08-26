@@ -1,58 +1,167 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
-/// Generates minimal placeholder PNG files for the coin flip animation.
-/// Each file is a 300x300 solid-color PNG with no text (text would require
-/// a full font renderer). Files are color-coded for easy identification:
-/// - cara: metallic gold (#D6AD60) — paleta P1 "Oro y Grafito"
-/// - cruz: metallic blue-silver (#8FA3C2) — paleta P2 "Plata Azulada"
-/// - flip frames: gradient from gold to blue-silver and back
+/// Generates placeholder PNG art for the coin: two static faces (cara/cruz)
+/// and a 12-frame flip sequence, written by hand (no `image` package) so
+/// this script can run standalone via `dart run` outside the Flutter SDK —
+/// see Gotchas in CLAUDE.md.
 ///
-/// Estos hex deben coincidir con CoinPalette en lib/core/theme.dart y con
-/// public_rag/app_look_feel.md — este script no puede importar ese archivo
-/// porque corre con `dart run` fuera del SDK de Flutter.
+/// Each PNG is a transparent-background RGBA circle shaded like a metal
+/// coin (offset highlight + rim shadow + a soft drop shadow underneath).
+/// The 12 flip frames get a progressive horizontal squish
+/// (`|cos(angle)|`, one 30° step per frame) to fake the coin turning
+/// edge-on as it spins, and their base color blends from cara to cruz and
+/// back across that same angle.
+///
+/// Colors must match `CoinPalette` in lib/core/theme.dart — this script
+/// can't import Flutter code, so the hex values are duplicated here on
+/// purpose. See public_rag/app_look_feel.md.
+
+const _caraColor = [0xD6, 0xAD, 0x60]; // CoinPalette.cara.accent
+const _cruzColor = [0x8F, 0xA3, 0xC2]; // CoinPalette.cruz.accent
+
+const _canvasSize = 300;
+const _frameCount = 12;
 
 void main() {
   final base = Directory.current.path;
 
-  // Generate cara face (metallic gold)
-  _writePng('$base/assets/coin/cara/cara.png', 300, 300, [0xD6, 0xAD, 0x60]);
+  _writeCoin('$base/assets/coin/cara/cara.png', _caraColor, 1.0);
+  _writeCoin('$base/assets/coin/cruz/cruz.png', _cruzColor, 1.0);
 
-  // Generate cruz face (metallic blue-silver)
-  _writePng('$base/assets/coin/cruz/cruz.png', 300, 300, [0x8F, 0xA3, 0xC2]);
+  for (var i = 0; i < _frameCount; i++) {
+    final angle = i * math.pi / 6; // 30° per frame, 360° over the sequence
+    final squishX = _clampD(math.cos(angle).abs(), 0.08, 1.0);
+    final colorT = (1 - math.cos(angle)) / 2; // 0 = cara, 1 = cruz
+    final edgeShade = 0.55 + 0.45 * squishX; // the thin edge sits in shadow
 
-  // Generate 12 flip frames with color transition
-  // Simulates: cara(gold) -> edge(thin/dark) -> cruz(blue-silver) -> edge -> cara
-  final frameColors = <List<int>>[
-    [0xD6, 0xAD, 0x60], // frame_00: full cara (metallic gold)
-    [0xB8, 0x95, 0x52], // frame_01: cara tilting
-    [0x8C, 0x76, 0x40], // frame_02: cara foreshortened
-    [0x5C, 0x5C, 0x58], // frame_03: edge view
-    [0x3A, 0x3A, 0x3C], // frame_04: thin edge (dark)
-    [0x5C, 0x66, 0x70], // frame_05: edge opening to cruz
-    [0x8F, 0xA3, 0xC2], // frame_06: full cruz (metallic blue-silver)
-    [0x78, 0x90, 0xAC], // frame_07: cruz tilting
-    [0x5F, 0x75, 0x90], // frame_08: cruz foreshortened
-    [0x3A, 0x3A, 0x3C], // frame_09: thin edge (dark)
-    [0x5C, 0x58, 0x50], // frame_10: edge opening to cara
-    [0xD6, 0xAD, 0x60], // frame_11: full cara again (metallic gold)
-  ];
+    final frameColor = _lerpRgb(_caraColor, _cruzColor, colorT)
+        .map((c) => _clampI((c * edgeShade).round(), 0, 255))
+        .toList();
 
-  for (var i = 0; i < frameColors.length; i++) {
     final name = 'frame_${i.toString().padLeft(2, '0')}.png';
-    _writePng(
-      '$base/assets/coin/flip_sequence/$name',
-      300,
-      300,
-      frameColors[i],
-    );
+    _writeCoin('$base/assets/coin/flip_sequence/$name', frameColor, squishX);
   }
 
   // ignore: avoid_print
-  print('Generated 14 placeholder PNGs (2 faces + 12 frames)');
+  print('Generated 14 placeholder coin PNGs (2 faces + 12 flip frames)');
 }
 
-void _writePng(String path, int width, int height, List<int> rgb) {
+/// Draws a shaded metallic circle (squished horizontally by [squishX], 1.0
+/// = full face-on) with a soft drop shadow, on a transparent canvas.
+void _writeCoin(String path, List<int> baseColor, double squishX) {
+  const size = _canvasSize;
+  final pixels = Uint8List(size * size * 4);
+
+  const cx = size / 2, cy = size / 2;
+  const r = size * 0.42;
+  final rx = r * squishX;
+  const ry = r;
+
+  final highlight = _lighten(baseColor, 0.55);
+  final shadow = _darken(baseColor, 0.55);
+  final rim = _darken(baseColor, 0.75);
+
+  const shadowCx = cx, shadowCy = cy + ry; // just under the coin's rim
+  final shadowRx = math.max(rx * 0.75, r * 0.10);
+  const shadowRy = r * 0.13;
+
+  for (var y = 0; y < size; y++) {
+    for (var x = 0; x < size; x++) {
+      var out = const [0, 0, 0, 0];
+
+      // Soft drop shadow underneath, composited first.
+      final sdx = (x - shadowCx) / shadowRx;
+      final sdy = (y - shadowCy) / shadowRy;
+      final shadowDist = math.sqrt(sdx * sdx + sdy * sdy);
+      if (shadowDist < 1.0) {
+        final falloff = 1 - shadowDist;
+        final a = _clampI((falloff * falloff * 110).round(), 0, 110);
+        out = _over([0, 0, 0, a], out);
+      }
+
+      // Coin sphere on top.
+      final nx = (x - cx) / rx;
+      final ny = (y - cy) / ry;
+      final dist = math.sqrt(nx * nx + ny * ny);
+      const edgeBand = 0.035;
+      double alpha;
+      if (dist <= 1 - edgeBand) {
+        alpha = 1.0;
+      } else if (dist >= 1 + edgeBand) {
+        alpha = 0.0;
+      } else {
+        alpha = (1 + edgeBand - dist) / (2 * edgeBand);
+      }
+
+      if (alpha > 0) {
+        // Offset highlight (upper-left light source) fading through the
+        // base color into a darker rim, like a brushed-metal sphere.
+        const hlx = -0.35, hly = -0.4;
+        final dHi =
+            math.sqrt((nx - hlx) * (nx - hlx) + (ny - hly) * (ny - hly));
+        final t = _clampD(dHi / 1.5, 0.0, 1.0);
+        var shaded = t < 0.5
+            ? _lerpRgb(highlight, baseColor, t / 0.5)
+            : _lerpRgb(baseColor, shadow, (t - 0.5) / 0.5);
+
+        final rimAmt = _clampD((dist - 0.72) / 0.28, 0.0, 1.0) * 0.5;
+        shaded = _lerpRgb(shaded, rim, rimAmt);
+
+        out = _over([...shaded, (alpha * 255).round()], out);
+      }
+
+      final idx = (y * size + x) * 4;
+      pixels[idx] = out[0];
+      pixels[idx + 1] = out[1];
+      pixels[idx + 2] = out[2];
+      pixels[idx + 3] = out[3];
+    }
+  }
+
+  _writePngRGBA(path, size, size, pixels);
+}
+
+/// Alpha "source-over" compositing of [fg] over [bg], both [r, g, b, a].
+List<int> _over(List<int> fg, List<int> bg) {
+  final fa = fg[3] / 255.0;
+  final ba = bg[3] / 255.0;
+  final oa = fa + ba * (1 - fa);
+  if (oa <= 0) return const [0, 0, 0, 0];
+  final r =
+      _clampI(((fg[0] * fa + bg[0] * ba * (1 - fa)) / oa).round(), 0, 255);
+  final g =
+      _clampI(((fg[1] * fa + bg[1] * ba * (1 - fa)) / oa).round(), 0, 255);
+  final b =
+      _clampI(((fg[2] * fa + bg[2] * ba * (1 - fa)) / oa).round(), 0, 255);
+  return [r, g, b, _clampI((oa * 255).round(), 0, 255)];
+}
+
+List<int> _lighten(List<int> rgb, double amt) => [
+      _clampI((rgb[0] + (255 - rgb[0]) * amt).round(), 0, 255),
+      _clampI((rgb[1] + (255 - rgb[1]) * amt).round(), 0, 255),
+      _clampI((rgb[2] + (255 - rgb[2]) * amt).round(), 0, 255),
+    ];
+
+List<int> _darken(List<int> rgb, double amt) => [
+      _clampI((rgb[0] * (1 - amt)).round(), 0, 255),
+      _clampI((rgb[1] * (1 - amt)).round(), 0, 255),
+      _clampI((rgb[2] * (1 - amt)).round(), 0, 255),
+    ];
+
+List<int> _lerpRgb(List<int> a, List<int> b, double t) => [
+      _clampI((a[0] + (b[0] - a[0]) * t).round(), 0, 255),
+      _clampI((a[1] + (b[1] - a[1]) * t).round(), 0, 255),
+      _clampI((a[2] + (b[2] - a[2]) * t).round(), 0, 255),
+    ];
+
+double _clampD(double v, double lo, double hi) =>
+    v < lo ? lo : (v > hi ? hi : v);
+
+int _clampI(int v, int lo, int hi) => v < lo ? lo : (v > hi ? hi : v);
+
+void _writePngRGBA(String path, int width, int height, Uint8List rgbaPixels) {
   final file = File(path);
   file.createSync(recursive: true);
 
@@ -65,16 +174,15 @@ void _writePng(String path, int width, int height, List<int> rgb) {
   final ihdr = BytesBuilder();
   ihdr.add(_uint32(width));
   ihdr.add(_uint32(height));
-  ihdr.add([8, 2, 0, 0, 0]); // 8-bit RGB, no interlace
+  ihdr.add([8, 6, 0, 0, 0]); // 8-bit RGBA, no interlace
   _writeChunk(out, 'IHDR', ihdr.toBytes());
 
   // IDAT chunk — uncompressed deflate with raw image data
   final rawRows = BytesBuilder();
   for (var y = 0; y < height; y++) {
     rawRows.addByte(0); // filter: none
-    for (var x = 0; x < width; x++) {
-      rawRows.add(rgb);
-    }
+    final rowStart = y * width * 4;
+    rawRows.add(rgbaPixels.sublist(rowStart, rowStart + width * 4));
   }
   final rawData = rawRows.toBytes();
 

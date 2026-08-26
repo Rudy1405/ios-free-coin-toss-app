@@ -54,9 +54,8 @@ class _CoinScreenState extends ConsumerState<CoinScreen>
   void initState() {
     super.initState();
     _initialFace = CoinRngService().getInitialFace();
-    _displayedAsset = _initialFace == FlipResult.cara
-        ? _caraAssetPath
-        : _cruzAssetPath;
+    _displayedAsset =
+        _initialFace == FlipResult.cara ? _caraAssetPath : _cruzAssetPath;
 
     // H4: rebote leve al aterrizar — overshoot de escala y vuelta al reposo,
     // separado del sequencer de frames (Timer.periodic) para no tocar su
@@ -130,54 +129,67 @@ class _CoinScreenState extends ConsumerState<CoinScreen>
     final palette = CoinPalette.forResult(coinState.lastResult);
 
     return CupertinoPageScaffold(
-      child: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    GestureDetector(
-                      onTap: _handleFlip,
-                      onVerticalDragEnd: (details) {
-                        if (details.velocity.pixelsPerSecond.dy < -100) {
-                          _handleFlip();
-                        }
-                      },
-                      child: AnimatedBuilder(
-                        animation: _landingScale,
-                        builder: (context, child) => Transform.scale(
-                          scale: _landingScale.value,
-                          child: child,
-                        ),
-                        child: SizedBox(
-                          width: coinSize,
-                          height: coinSize,
-                          child: Image.asset(
-                            _displayedAsset,
-                            fit: BoxFit.contain,
-                            gaplessPlayback: true,
+      backgroundColor: CupertinoColors.transparent,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [palette.backgroundTop, palette.backgroundBottom],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: _handleFlip,
+                        onVerticalDragEnd: (details) {
+                          if (details.velocity.pixelsPerSecond.dy < -100) {
+                            _handleFlip();
+                          }
+                        },
+                        child: AnimatedBuilder(
+                          animation: _landingScale,
+                          builder: (context, child) => Transform.scale(
+                            scale: _landingScale.value,
+                            child: child,
+                          ),
+                          child: SizedBox(
+                            width: coinSize,
+                            height: coinSize,
+                            child: Image.asset(
+                              _displayedAsset,
+                              fit: BoxFit.contain,
+                              gaplessPlayback: true,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 32),
-                    if (coinState.status == CoinStatus.result &&
-                        coinState.lastResult != null)
-                      _GlassLabel(
-                        text: coinState.lastResult == FlipResult.cara
-                            ? 'CARA'
-                            : 'CRUZ',
-                        palette: palette,
-                      ),
-                  ],
+                      const SizedBox(height: 32),
+                      if (coinState.status == CoinStatus.result &&
+                          coinState.lastResult != null)
+                        _GlassLabel(
+                          text: coinState.lastResult == FlipResult.cara
+                              ? 'CARA'
+                              : 'CRUZ',
+                          palette: palette,
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            if (history.isNotEmpty)
-              _HistoryRow(records: history),
-          ],
+              if (history.isNotEmpty) _HistoryRow(records: history),
+            ],
+          ),
         ),
       ),
     );
