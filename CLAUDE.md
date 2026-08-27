@@ -60,6 +60,18 @@ Flujo de estado entre capas, de arriba a abajo:
 
 @public_rag/app_look_feel.md
 
+## Build Android / iOS
+
+El proyecto ya tiene ambas carpetas de plataforma (`android/`, `ios/`) generadas por `flutter create` y configuradas — `flutter analyze`/`flutter test`/`flutter pub get` pasan limpio, y `flutter build apk --debug` en esta máquina falla únicamente por falta del SDK (ver Gotchas), no por nada del proyecto. No hay nada bloqueado del lado del código; lo que falta es toolchain y, para publicar, credenciales que no corresponde generar acá.
+
+- **Application ID / Bundle ID** ya seteados desde el scaffold inicial: `com.caracruz.cara_o_cruz` (Android, en `android/app/build.gradle.kts`) y `com.caracruz.caraOCruz` (iOS, en `ios/Runner.xcodeproj/project.pbxproj`). Nombre visible en ambas plataformas: "Cara o Cruz" (`android:label` en `AndroidManifest.xml`, `CFBundleDisplayName` en `Info.plist`).
+- **Sin permisos runtime**: la app solo usa Hive (almacenamiento local), no pide `INTERNET` ni nada más allá de lo que Flutter agrega automáticamente a los manifests de debug/profile para hot reload.
+- **Android, para correr ahora**: instalar Android Studio (trae el SDK) o `flutter config --android-sdk <ruta>` si ya está instalado en otro lado, después `flutter build apk --debug`. También requiere "Modo de programador" de Windows activado (ver Gotchas) para el paso de symlinks — no hace falta para hacer *build*, sí para `flutter run -d <android-device>` en esta máquina.
+- **Android, para publicar en Play Store**: `android/app/build.gradle.kts` firma el build `release` con el keystore de **debug** ("para que `flutter run --release` funcione") — sirve para probar localmente pero no para subir a la Play Store. Antes de un release real hace falta un keystore de verdad + `android/key.properties` (gitignorado, no commitear) apuntado desde `signingConfigs`.
+- **iOS, no compilable desde Windows** (`flutter build ios` ni siquiera existe como subcomando acá — requiere macOS/Xcode). En una Mac: `flutter pub get` + abrir `ios/Runner.xcworkspace` (o `flutter build ios`) resuelve dependencias de plugins automáticamente (CocoaPods o Swift Package Manager según la versión de Flutter — no hay `ios/Podfile` commiteado a propósito, se genera solo en el primer build). Falta setear el **Development Team** en Xcode (signing) con una cuenta de Apple Developer — no hay ninguno seteado en el proyecto, es specific de cada desarrollador/cuenta.
+- **`coin_widget_service.dart` es un stub**: el widget de home screen de iOS (`home_widget` package) todavía no tiene su Widget Extension target real agregado en Xcode — no bloquea compilar la app principal, pero el widget no va a aparecer hasta que se agregue esa extensión (trabajo que requiere Xcode, no se puede hacer desde acá).
+- **Íconos de app**: siguen siendo el ícono default de Flutter en ambas plataformas — no se generó uno custom con la nueva identidad visual (ver `public_rag/app_look_feel.md`) porque no se pidió explícitamente; queda pendiente si se quiere antes de publicar.
+
 ## Gotchas del entorno (Windows)
 
 - Compilar/correr para **Windows desktop o Android** requiere symlinks, lo que a su vez requiere "Modo de programador" activado en Windows (Configuración → Para desarrolladores). No se puede activar por script sin privilegios de administrador (clave en `HKLM`). **Web** (`flutter run -d chrome`) y `flutter analyze`/`flutter test` no lo necesitan.

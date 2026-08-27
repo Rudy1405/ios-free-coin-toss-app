@@ -7,12 +7,21 @@ actualizar este archivo en el mismo commit.
 Origen: propuesta generada con `ui-ux-pro-max` (paletas P1/P2, material E1/E2,
 tipografía T1/T2, historial L1/L2), revisada y recortada por el usuario el
 2026-08-26. Selección aplicada: **P1+P2 condicionados por cara, E2, T1, H2,
-H4, L2**. `H1`, `H3`, `E1`, `L1`, `P2` en su variante índigo original y `T2`
-quedaron fuera (T2 documentado abajo para una futura implementación). El
-mismo día, en una segunda pasada, el usuario pidió reemplazar el placeholder
-cuadrado por una moneda circular con sombreado metálico y extender la
-paleta condicional al fondo de la app — ver "Assets de la moneda" y "Fondo
-condicional" más abajo.
+H4, L2**. `H1`, `H3`, `E1`, `L1` y `T2` quedaron fuera (T2 documentado abajo
+para una futura implementación).
+
+Pasadas siguientes, mismo día:
+
+1. Se reemplazó el placeholder cuadrado por una moneda circular con
+   sombreado metálico y se extendió la paleta condicional al fondo de la
+   app — ver "Assets de la moneda" y "Fondo condicional" más abajo.
+2. Se corrigió el squish de los frames de giro (era horizontal, pasó a
+   vertical) y se agregó `.gitattributes` marcando los PNG como binarios,
+   para blindarlos contra corrupción por conversión de saltos de línea de
+   git en Windows (`core.autocrlf`) — ver "Assets de la moneda".
+3. El acento de CRUZ (P2) volvió al índigo/teal original de la propuesta,
+   revirtiendo el acero neutro de una iteración intermedia — ver la nota de
+   diseño en "Paleta condicional" más abajo.
 
 ## Principio rector
 
