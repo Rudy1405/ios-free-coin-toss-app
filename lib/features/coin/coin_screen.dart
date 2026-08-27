@@ -2,9 +2,11 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/theme.dart';
 import '../history/history_provider.dart';
 import '../history/history_repository.dart';
 import 'coin_animation_controller.dart';
@@ -40,18 +42,40 @@ class CoinScreen extends ConsumerStatefulWidget {
   ConsumerState<CoinScreen> createState() => _CoinScreenState();
 }
 
-class _CoinScreenState extends ConsumerState<CoinScreen> {
+class _CoinScreenState extends ConsumerState<CoinScreen>
+    with SingleTickerProviderStateMixin {
   late final CoinAnimationController _animController;
   late final FlipResult _initialFace;
+  late final AnimationController _landingController;
+  late final Animation<double> _landingScale;
   String _displayedAsset = _caraAssetPath;
 
   @override
   void initState() {
     super.initState();
     _initialFace = CoinRngService().getInitialFace();
-    _displayedAsset = _initialFace == FlipResult.cara
-        ? _caraAssetPath
-        : _cruzAssetPath;
+    _displayedAsset =
+        _initialFace == FlipResult.cara ? _caraAssetPath : _cruzAssetPath;
+
+    // H4: rebote leve al aterrizar — overshoot de escala y vuelta al reposo,
+    // separado del sequencer de frames (Timer.periodic) para no tocar su
+    // testabilidad sin árbol de widgets.
+    _landingController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 380),
+    );
+    _landingScale = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 1.1)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 40,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.1, end: 1.0)
+            .chain(CurveTween(curve: Curves.elasticOut)),
+        weight: 60,
+      ),
+    ]).animate(_landingController);
 
     _animController = CoinAnimationController(
       framePaths: _framePaths,
@@ -66,6 +90,8 @@ class _CoinScreenState extends ConsumerState<CoinScreen> {
     };
 
     _animController.onComplete = (_) {
+      HapticFeedback.selectionClick(); // H2: haptic al revelar el resultado
+      _landingController.forward(from: 0);
       ref.read(coinStateProvider.notifier).resolveFlip();
     };
   }
@@ -73,6 +99,7 @@ class _CoinScreenState extends ConsumerState<CoinScreen> {
   @override
   void dispose() {
     _animController.dispose();
+    _landingController.dispose();
     super.dispose();
   }
 
@@ -97,48 +124,72 @@ class _CoinScreenState extends ConsumerState<CoinScreen> {
     final coinSize = math
         .min(screenSize.width * 0.6, screenSize.height * 0.4)
         .clamp(120.0, 400.0);
+    // 1: la paleta activa sigue a la cara resuelta — P1 (oro) para cara,
+    // P2 (plata azulada) para cruz. Ver public_rag/app_look_feel.md.
+    final palette = CoinPalette.forResult(coinState.lastResult);
 
     return CupertinoPageScaffold(
-      child: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    GestureDetector(
-                      onTap: _handleFlip,
-                      onVerticalDragEnd: (details) {
-                        if (details.velocity.pixelsPerSecond.dy < -100) {
-                          _handleFlip();
-                        }
-                      },
-                      child: SizedBox(
-                        width: coinSize,
-                        height: coinSize,
-                        child: Image.asset(
-                          _displayedAsset,
-                          fit: BoxFit.contain,
-                          gaplessPlayback: true,
+      backgroundColor: CupertinoColors.transparent,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [palette.backgroundTop, palette.backgroundBottom],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: _handleFlip,
+                        onVerticalDragEnd: (details) {
+                          if (details.velocity.pixelsPerSecond.dy < -100) {
+                            _handleFlip();
+                          }
+                        },
+                        child: AnimatedBuilder(
+                          animation: _landingScale,
+                          builder: (context, child) => Transform.scale(
+                            scale: _landingScale.value,
+                            child: child,
+                          ),
+                          child: SizedBox(
+                            width: coinSize,
+                            height: coinSize,
+                            child: Image.asset(
+                              _displayedAsset,
+                              fit: BoxFit.contain,
+                              gaplessPlayback: true,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 32),
-                    if (coinState.status == CoinStatus.result &&
-                        coinState.lastResult != null)
-                      _GlassLabel(
-                        text: coinState.lastResult == FlipResult.cara
-                            ? 'CARA'
-                            : 'CRUZ',
-                      ),
-                  ],
+                      const SizedBox(height: 32),
+                      if (coinState.status == CoinStatus.result &&
+                          coinState.lastResult != null)
+                        _GlassLabel(
+                          text: coinState.lastResult == FlipResult.cara
+                              ? 'CARA'
+                              : 'CRUZ',
+                          palette: palette,
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            if (history.isNotEmpty)
-              _HistoryRow(records: history),
-          ],
+              if (history.isNotEmpty) _HistoryRow(records: history),
+            ],
+          ),
         ),
       ),
     );
@@ -146,31 +197,49 @@ class _CoinScreenState extends ConsumerState<CoinScreen> {
 }
 
 class _GlassLabel extends StatelessWidget {
-  const _GlassLabel({required this.text});
+  const _GlassLabel({required this.text, required this.palette});
 
   final String text;
+  final CoinPalette palette;
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(20),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
           decoration: BoxDecoration(
-            color: CupertinoColors.systemGrey.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: CupertinoColors.systemGrey.withValues(alpha: 0.3),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                CupertinoColors.white.withValues(alpha: 0.14),
+                CupertinoColors.white.withValues(alpha: 0.04),
+              ],
             ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: palette.glassBorder, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: CupertinoColors.black.withValues(alpha: 0.35),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+              BoxShadow(
+                color: palette.accent.withValues(alpha: 0.18),
+                blurRadius: 24,
+                spreadRadius: -4,
+              ),
+            ],
           ),
           child: Text(
             text,
             style: const TextStyle(
-              fontSize: 28,
+              fontSize: 40,
               fontWeight: FontWeight.w700,
-              letterSpacing: 4,
+              letterSpacing: -0.5,
               color: CupertinoColors.white,
             ),
           ),
@@ -190,17 +259,31 @@ class _HistoryRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 24, left: 16, right: 16),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             decoration: BoxDecoration(
-              color: CupertinoColors.systemGrey.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: CupertinoColors.systemGrey.withValues(alpha: 0.25),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  CupertinoColors.white.withValues(alpha: 0.10),
+                  CupertinoColors.white.withValues(alpha: 0.02),
+                ],
               ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: CupertinoColors.white.withValues(alpha: 0.12),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: CupertinoColors.black.withValues(alpha: 0.3),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -220,30 +303,49 @@ class _HistoryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = record.result == 'cara' ? 'CARA' : 'CRUZ';
+    final isCara = record.result == 'cara';
+    final palette = isCara ? CoinPalette.cara : CoinPalette.cruz;
+    final label = isCara ? 'CARA' : 'CRUZ';
     final time = DateFormat.Hm().format(record.timestamp);
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1,
-            color: CupertinoColors.white,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: palette.glassTint,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: palette.glassBorder, width: 1),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: palette.accent,
+              shape: BoxShape.circle,
+            ),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          time,
-          style: TextStyle(
-            fontSize: 10,
-            color: CupertinoColors.systemGrey2.withValues(alpha: 0.8),
+          const SizedBox(height: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1,
+              color: CupertinoColors.white,
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 2),
+          Text(
+            time,
+            style: TextStyle(
+              fontSize: 10,
+              color: CupertinoColors.systemGrey2.withValues(alpha: 0.8),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
