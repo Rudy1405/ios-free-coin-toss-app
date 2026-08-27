@@ -19,7 +19,7 @@ import 'dart:typed_data';
 /// purpose. See public_rag/app_look_feel.md.
 
 const _caraColor = [0xD6, 0xAD, 0x60]; // CoinPalette.cara.accent
-const _cruzColor = [0x8F, 0xA3, 0xC2]; // CoinPalette.cruz.accent
+const _cruzColor = [0x7B, 0x7B, 0xEA]; // CoinPalette.cruz.accent
 
 const _canvasSize = 300;
 const _frameCount = 12;

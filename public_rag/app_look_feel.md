@@ -29,13 +29,16 @@ Implementada en `CoinPalette` (`lib/core/theme.dart`), seleccionada vía
 | Cara | Nombre | `accent` | `accentHighlight` | Uso |
 |---|---|---|---|---|
 | **CARA** | Oro y Grafito (P1) | `#D6AD60` | `#F0D698` | moneda `cara.png`, borde/glow del `_GlassLabel`, punto + borde del chip de historial cuando `record.result == 'cara'` |
-| **CRUZ** | Plata Azulada (P2) | `#8FA3C2` | `#C7D2E0` | moneda `cruz.png`, borde/glow del `_GlassLabel`, punto + borde del chip de historial cuando `record.result == 'cruz'` |
+| **CRUZ** | Índigo Nocturno (P2) | `#7B7BEA` | `#38C9BB` | moneda `cruz.png`, borde/glow del `_GlassLabel`, punto + borde del chip de historial cuando `record.result == 'cruz'` |
 
-Nota de diseño: la propuesta original llamaba a P2 "Índigo Nocturno"
-(`#7B7BEA`/`#38C9BB`, más púrpura/teal). El usuario pidió explícitamente que
-CRUZ se sienta **azul, plateado, metálico** — P2 se ajustó a un tono acero
-más neutro (`#8FA3C2`) en vez del índigo saturado original. Si se retoma la
-variante índigo en el futuro, tratarla como `P2b`, no como reemplazo de esta.
+Nota de diseño: P2 pasó por dos versiones el mismo día. La propuesta
+original era este índigo/teal saturado; se cambió después a un acero más
+neutro (`#8FA3C2`/`#C7D2E0`) porque el usuario pidió que CRUZ se sintiera
+"azul, plateado, metálico". Al ver el resultado en pantalla, el usuario
+volvió a pedir explícitamente el índigo original (imagen de referencia con
+los hex `#0B0B12` `#1C1A30` `#7B7BEA` `#38C9BB`) — **esta es la versión
+vigente**. El acero neutro no quedó documentado como alternativa; si hace
+falta retomarlo, es `accent: #8FA3C2` / `accentHighlight: #C7D2E0`.
 
 `glassTint` (`accent` @ 18% alpha) y `glassBorder` (`accent` @ 45% alpha) se
 derivan del `accent` en tiempo de uso — no se guardan como constantes
@@ -57,9 +60,11 @@ para dejarlo ver.
 
 P1 es casi neutro (un gris carbón con la tibieza justa para no chocar con el
 oro); P2 lleva un tinte índigo perceptible — así el fondo de CRUZ se nota
-más "propio" que el de CARA, que replica el Cupertino oscuro base. Sigue el
-mismo `CoinPalette.forResult(coinState.lastResult)` que el resto de los
-acentos: en `idle` (antes del primer tiro) muestra el fondo P1 por defecto.
+más "propio" que el de CARA, que replica el Cupertino oscuro base. Estos dos
+hex no cambiaron entre las dos versiones de P2 (ver nota arriba) — solo se
+ajustó `accent`/`accentHighlight`. Sigue el mismo
+`CoinPalette.forResult(coinState.lastResult)` que el resto de los acentos:
+en `idle` (antes del primer tiro) muestra el fondo P1 por defecto.
 
 ### Assets de la moneda
 

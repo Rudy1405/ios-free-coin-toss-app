@@ -19,10 +19,11 @@ abstract class AppTheme {
 
 /// Acento visual asociado a la cara de la moneda que está en pantalla.
 ///
-/// `cara` ("Oro y Grafito") y `cruz` ("Plata Azulada") son las dos paletas
-/// documentadas en `public_rag/app_look_feel.md` — cualquier cambio de tono
-/// acá debe reflejarse también ahí y en `generate_placeholders.dart`, que
-/// mantiene sus propios valores RGB porque corre fuera del SDK de Flutter.
+/// `cara` ("Oro y Grafito") y `cruz` ("Índigo Nocturno") son las dos
+/// paletas documentadas en `public_rag/app_look_feel.md` — cualquier cambio
+/// de tono acá debe reflejarse también ahí y en `generate_placeholders.dart`,
+/// que mantiene sus propios valores RGB porque corre fuera del SDK de
+/// Flutter.
 class CoinPalette {
   const CoinPalette({
     required this.accent,
@@ -50,8 +51,8 @@ class CoinPalette {
   );
 
   static const cruz = CoinPalette(
-    accent: Color(0xFF8FA3C2),
-    accentHighlight: Color(0xFFC7D2E0),
+    accent: Color(0xFF7B7BEA),
+    accentHighlight: Color(0xFF38C9BB),
     backgroundTop: Color(0xFF1C1A30),
     backgroundBottom: Color(0xFF0B0B12),
   );
