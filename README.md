@@ -5,7 +5,7 @@ App de Flutter para lanzar una moneda ("Cara o Cruz" / heads-or-tails). Interfaz
 ## Qué hace
 
 - Toca la moneda (o desliza hacia arriba) para lanzarla.
-- El resultado se decide al instante con `Random.secure()`; una animación de 12 frames (~24fps) simula el giro y la moneda cae en el resultado ya sorteado.
+- El resultado se decide al instante con `Random.secure()`; la cara estática se desvanece hacia una animación de 36 frames (~60fps, con motion blur) que simula el giro, y la moneda cae en el resultado ya sorteado, desvaneciéndose de vuelta a la cara estática correspondiente.
 - Al aterrizar aparece una etiqueta con efecto glassmorphism: **CARA** o **CRUZ**.
 - Los últimos 5 lanzamientos se guardan localmente (Hive) y se muestran en una fila de historial con hora, más reciente primero.
 
@@ -32,11 +32,13 @@ cd ios-free-coin-toss-app
 flutter pub get
 ```
 
-Los assets de la moneda (`assets/coin/`) ya están generados en el repo como placeholders de color sólido. Si necesitas regenerarlos:
+`assets/coin/cara/cara.png` y `assets/coin/cruz/cruz.png` son arte final (no placeholders). El resto — `assets/coin/flip_sequence/` (36 frames procedurales) — sí es un placeholder generado; si necesitas regenerarlo:
 
 ```bash
 dart run generate_placeholders.dart
 ```
+
+Este comando **nunca** toca `cara.png`/`cruz.png`, solo `flip_sequence/`.
 
 Ver [`assets/README_ASSETS.md`](assets/README_ASSETS.md) para la guía de reemplazo por arte final.
 

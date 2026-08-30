@@ -13,20 +13,13 @@ import 'coin_animation_controller.dart';
 import 'coin_rng_service.dart';
 import 'coin_state.dart';
 
-const _framePaths = [
-  'assets/coin/flip_sequence/frame_00.png',
-  'assets/coin/flip_sequence/frame_01.png',
-  'assets/coin/flip_sequence/frame_02.png',
-  'assets/coin/flip_sequence/frame_03.png',
-  'assets/coin/flip_sequence/frame_04.png',
-  'assets/coin/flip_sequence/frame_05.png',
-  'assets/coin/flip_sequence/frame_06.png',
-  'assets/coin/flip_sequence/frame_07.png',
-  'assets/coin/flip_sequence/frame_08.png',
-  'assets/coin/flip_sequence/frame_09.png',
-  'assets/coin/flip_sequence/frame_10.png',
-  'assets/coin/flip_sequence/frame_11.png',
-];
+// Must match `_frameCount` in generate_placeholders.dart — this app can't
+// import that standalone script, so the count is duplicated here on purpose.
+const _flipFrameCount = 36;
+final _framePaths = List.generate(
+  _flipFrameCount,
+  (i) => 'assets/coin/flip_sequence/frame_${i.toString().padLeft(2, '0')}.png',
+);
 
 const _caraAssetPath = 'assets/coin/cara/cara.png';
 const _cruzAssetPath = 'assets/coin/cruz/cruz.png';
@@ -43,18 +36,29 @@ class CoinScreen extends ConsumerStatefulWidget {
 }
 
 class _CoinScreenState extends ConsumerState<CoinScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final CoinAnimationController _animController;
   late final FlipResult _initialFace;
   late final AnimationController _landingController;
   late final Animation<double> _landingScale;
-  String _displayedAsset = _caraAssetPath;
+
+  // Crossfade between the low-detail spinning frames and the high-detail
+  // static face art, so the swap between them never happens as a hard cut.
+  // value: 1 = fully showing the static face, 0 = fully showing the
+  // spinning frame. Reverses (static -> frame) when a flip starts, forwards
+  // (frame -> static) when it lands. Kept separate from the frame sequencer
+  // (Timer.periodic) for the same testability reason as `_landingController`.
+  late final AnimationController _crossfadeController;
+  late final Animation<double> _staticOpacity;
+
+  String _frameAssetPath = _framePaths.first;
+  String _staticAssetPath = _caraAssetPath;
 
   @override
   void initState() {
     super.initState();
     _initialFace = CoinRngService().getInitialFace();
-    _displayedAsset =
+    _staticAssetPath =
         _initialFace == FlipResult.cara ? _caraAssetPath : _cruzAssetPath;
 
     // H4: rebote leve al aterrizar — overshoot de escala y vuelta al reposo,
@@ -77,20 +81,33 @@ class _CoinScreenState extends ConsumerState<CoinScreen>
       ),
     ]).animate(_landingController);
 
-    _animController = CoinAnimationController(
-      framePaths: _framePaths,
-      caraAssetPath: _caraAssetPath,
-      cruzAssetPath: _cruzAssetPath,
+    _crossfadeController = AnimationController(
+      vsync: this,
+      value: 1.0, // idle: fully showing the static face
+      duration: const Duration(milliseconds: 220), // frame -> static (land)
+      reverseDuration: const Duration(milliseconds: 140), // static -> frame
     );
+    _staticOpacity = CurvedAnimation(
+      parent: _crossfadeController,
+      curve: Curves.easeOut,
+      reverseCurve: Curves.easeIn,
+    );
+
+    _animController = CoinAnimationController(framePaths: _framePaths);
 
     _animController.onFrameChanged = (_) {
       setState(() {
-        _displayedAsset = _animController.currentAssetPath;
+        _frameAssetPath = _animController.currentFramePath;
       });
     };
 
-    _animController.onComplete = (_) {
+    _animController.onComplete = (result) {
       HapticFeedback.selectionClick(); // H2: haptic al revelar el resultado
+      setState(() {
+        _staticAssetPath =
+            result == CoinFace.cara ? _caraAssetPath : _cruzAssetPath;
+      });
+      _crossfadeController.forward(from: 0);
       _landingController.forward(from: 0);
       ref.read(coinStateProvider.notifier).resolveFlip();
     };
@@ -100,6 +117,7 @@ class _CoinScreenState extends ConsumerState<CoinScreen>
   void dispose() {
     _animController.dispose();
     _landingController.dispose();
+    _crossfadeController.dispose();
     super.dispose();
   }
 
@@ -112,6 +130,7 @@ class _CoinScreenState extends ConsumerState<CoinScreen>
 
     final pending = notifier.pendingResult;
     if (pending != null) {
+      _crossfadeController.reverse(from: 1);
       _animController.play(_toCoinFace(pending));
     }
   }
@@ -166,10 +185,32 @@ class _CoinScreenState extends ConsumerState<CoinScreen>
                           child: SizedBox(
                             width: coinSize,
                             height: coinSize,
-                            child: Image.asset(
-                              _displayedAsset,
-                              fit: BoxFit.contain,
-                              gaplessPlayback: true,
+                            child: AnimatedBuilder(
+                              animation: _staticOpacity,
+                              builder: (context, child) {
+                                final staticOpacity = _staticOpacity.value;
+                                return Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    Opacity(
+                                      opacity: 1 - staticOpacity,
+                                      child: Image.asset(
+                                        _frameAssetPath,
+                                        fit: BoxFit.contain,
+                                        gaplessPlayback: true,
+                                      ),
+                                    ),
+                                    Opacity(
+                                      opacity: staticOpacity,
+                                      child: Image.asset(
+                                        _staticAssetPath,
+                                        fit: BoxFit.contain,
+                                        gaplessPlayback: true,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                           ),
                         ),

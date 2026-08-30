@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 App Flutter "Cara o Cruz" (heads/tails). Paquete Dart `cara_o_cruz`, org `com.caracruz`. UI en español (locale `es`), tema oscuro Cupertino (iOS-like). Reconstruida siguiendo la guía `../claude_deploy.md` (repo padre `toss_coin/`).
 
-Flujo: tap o swipe-up sobre la moneda → el resultado se sortea de inmediato con `Random.secure()` → se reproduce una animación de sprites (12 frames, ~24fps) que simula el giro → la moneda cae en el frame que corresponde al resultado ya decidido → aparece una etiqueta glassmorphism ("CARA"/"CRUZ") → el resultado se persiste en Hive y se muestra en una fila de historial (últimos 5, más reciente primero).
+Flujo: tap o swipe-up sobre la moneda → el resultado se sortea de inmediato con `Random.secure()` → la cara estática (arte real, ver `assets_ref/coins/`) se desvanece hacia la secuencia de giro (sprites procedurales, 36 frames, ~60fps, con motion blur creciente hacia las poses de canto) → la moneda cae en el frame que corresponde al resultado ya decidido y se desvanece de vuelta hacia la cara estática correspondiente → aparece una etiqueta glassmorphism ("CARA"/"CRUZ") → el resultado se persiste en Hive y se muestra en una fila de historial (últimos 5, más reciente primero).
 
 ## Comandos
 
@@ -18,7 +18,7 @@ $env:Path += ";$env:USERPROFILE\flutter_sdk\flutter\bin"
 
 ```bash
 flutter pub get                         # instalar dependencias
-dart run generate_placeholders.dart     # (re)generar los 14 PNG placeholder si assets/coin/ está vacío
+dart run generate_placeholders.dart     # (re)generar los 36 PNG del flip_sequence; NO toca cara.png/cruz.png (arte real)
 flutter analyze                         # debe dar 0 issues
 flutter test                            # corre todos los tests
 flutter test test/coin_rng_service_test.dart   # un solo archivo de test
@@ -48,11 +48,13 @@ lib/
 Flujo de estado entre capas, de arriba a abajo:
 
 1. **`CoinScreen._handleFlip()`** llama a `CoinStateNotifier.startFlip()`, que sortea el resultado *inmediatamente* (vía `CoinRngService`) y lo guarda en `pendingResult` — el estado pasa a `flipping` antes de que la animación empiece a correr.
-2. `CoinScreen` toma ese `pendingResult` y arranca `CoinAnimationController.play(result)`, que hace *tick* cada 42ms (`Timer.periodic`, no `AnimationController`/`TickerProvider` — así se puede testear sin árbol de widgets) durante `frames.length * fullRotations` pasos, y aterriza en el frame que corresponde al resultado ya fijado.
+2. `CoinScreen` toma ese `pendingResult` y arranca `CoinAnimationController.play(result)`, que hace *tick* cada 16ms (`Timer.periodic`, no `AnimationController`/`TickerProvider` — así se puede testear sin árbol de widgets) durante `frames.length * fullRotations` pasos, y aterriza en el frame que corresponde al resultado ya fijado.
 3. Al terminar, `onComplete` dispara `CoinStateNotifier.resolveFlip()`, que pasa el estado a `result` y llama a `HistoryNotifier.recordFlip()`.
 4. `HistoryNotifier` persiste en `HistoryRepository` (Hive) y refresca su estado (`List<FlipRecord>`, ya invertido para mostrar el más reciente primero), que `CoinScreen` observa vía `ref.watch(historyProvider)`.
 
 **Por qué el resultado se decide antes de animar:** evita que la animación "mienta" — el frame final siempre corresponde al resultado ya sorteado, nunca al revés.
+
+**Crossfade cara-estática ↔ frames de giro:** `CoinScreen` dibuja dos `Image.asset` superpuestas (Stack) — una para la cara estática (arte real) y otra para el frame de giro actual — y cruza su opacidad con un `AnimationController` propio (`_crossfadeController`, 140ms al arrancar el giro, 220ms al aterrizar), separado del sequencer de frames por la misma razón de testabilidad que el rebote de aterrizaje (`_landingController`). Esto evita el corte brusco entre el arte detallado (estático) y los frames procedurales de baja fidelidad del `flip_sequence`.
 
 **Inyección de `HistoryRepository`:** se registra como `Provider` que lanza `UnimplementedError` por defecto y se sobreescribe en `main.dart` con la instancia real de Hive. Los tests (`widget_test.dart`) inyectan un `FakeHistoryRepository` de la misma forma, sin tocar Hive.
 
@@ -78,3 +80,5 @@ El proyecto ya tiene ambas carpetas de plataforma (`android/`, `ios/`) generadas
 - Falta Android SDK/Android Studio en esta máquina (`flutter doctor` lo marca faltante) — build Android real está bloqueado hasta instalarlo. iOS no es compilable desde Windows (requiere macOS/Xcode).
 - `coin_screen.dart` calcula el tamaño de la moneda como `min(width*0.6, height*0.4).clamp(120, 400)` — **no** uses solo `screenWidth * 0.6` (como en el spec original), causa `RenderFlex overflow` en viewports anchos y bajos (ventanas de escritorio/navegador en landscape); se verificó y corrigió este bug durante la implementación inicial.
 - `generate_placeholders.dart` escribe PNGs a mano (sin paquete `image`) para no depender de nada fuera del SDK de Dart — mantiene esa restricción si se modifica.
+- `assets/coin/cara/cara.png` y `assets/coin/cruz/cruz.png` son arte real (recortado desde las referencias en `assets_ref/coins/`, con transparencia real extraída por flood-fill — las imágenes fuente NO tenían canal alfa real pese a ser PNG/tener fondo a cuadros). `generate_placeholders.dart` ya **no** los toca — solo regenera `flip_sequence/`. Si algún día se quiere volver a placeholders sólidos para esas dos caras, hay que reintroducir esas dos líneas a mano; no va a pasar por accidente.
+- `_flipFrameCount` en `coin_screen.dart` debe coincidir con `_frameCount` en `generate_placeholders.dart` (ambos en 36) — están duplicados a propósito porque el script no puede importar código de la app (mismo patrón que la duplicación de `CoinPalette`).

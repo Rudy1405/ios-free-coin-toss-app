@@ -7,30 +7,20 @@ enum AnimationState { idle, playing }
 class CoinAnimationController {
   CoinAnimationController({
     required this.framePaths,
-    required this.caraAssetPath,
-    required this.cruzAssetPath,
-    this.frameDuration = const Duration(milliseconds: 42),
+    this.frameDuration = const Duration(milliseconds: 16),
   }) : assert(framePaths.isNotEmpty);
 
   final List<String> framePaths;
-  final String caraAssetPath;
-  final String cruzAssetPath;
 
-  /// Duration per frame — defaults to ~24fps (42ms).
+  /// Duration per frame — defaults to ~60fps (16ms).
   final Duration frameDuration;
 
   int _currentFrameIndex = 0;
   int get currentFrameIndex => _currentFrameIndex;
+  String get currentFramePath => framePaths[_currentFrameIndex];
 
   AnimationState _state = AnimationState.idle;
   AnimationState get state => _state;
-
-  String get currentAssetPath {
-    if (_state == AnimationState.idle && _landedFace != null) {
-      return _landedFace == CoinFace.cara ? caraAssetPath : cruzAssetPath;
-    }
-    return framePaths[_currentFrameIndex];
-  }
 
   CoinFace? _landedFace;
   CoinFace? get landedFace => _landedFace;

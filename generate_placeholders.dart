@@ -2,17 +2,28 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-/// Generates placeholder PNG art for the coin: two static faces (cara/cruz)
-/// and a 12-frame flip sequence, written by hand (no `image` package) so
-/// this script can run standalone via `dart run` outside the Flutter SDK —
-/// see Gotchas in CLAUDE.md.
+/// Generates the placeholder PNG art for the coin's 36-frame flip sequence,
+/// written by hand (no `image` package) so this script can run standalone
+/// via `dart run` outside the Flutter SDK — see Gotchas in CLAUDE.md.
+///
+/// `cara.png` and `cruz.png` are real curated art (see assets_ref/coins/)
+/// and are intentionally NOT written by this script anymore — re-running it
+/// must never clobber them.
 ///
 /// Each PNG is a transparent-background RGBA circle shaded like a metal
 /// coin (offset highlight + rim shadow + a soft drop shadow underneath).
-/// The 12 flip frames get a progressive vertical squish (`|cos(angle)|`,
-/// one 30° step per frame) to fake the coin tumbling end-over-end through
+/// The 36 flip frames get a progressive vertical squish (`|cos(angle)|`,
+/// one 10° step per frame) to fake the coin tumbling end-over-end through
 /// the air, and their base color blends from cara to cruz and back across
 /// that same angle.
+///
+/// To soften the jump between these low-detail procedural frames and the
+/// high-detail static faces they crossfade with in `coin_screen.dart`, each
+/// frame also gets a vertical motion blur + slight alpha fade proportional
+/// to `|sin(angle)|` — i.e. near-zero at the full-face poses (frame_00,
+/// frame_18) where detail matters and the crossfade happens, ramping up
+/// through the edge-on poses where the coin is moving fastest and a thin
+/// sliver anyway, so the blur reads as speed rather than as missing detail.
 ///
 /// Colors must match `CoinPalette` in lib/core/theme.dart — this script
 /// can't import Flutter code, so the hex values are duplicated here on
@@ -22,37 +33,55 @@ const _caraColor = [0xD6, 0xAD, 0x60]; // CoinPalette.cara.accent
 const _cruzColor = [0x7B, 0x7B, 0xEA]; // CoinPalette.cruz.accent
 
 const _canvasSize = 300;
-const _frameCount = 12;
+const _frameCount = 36;
+const _maxBlurPx = 9;
 
 void main() {
   final base = Directory.current.path;
 
-  _writeCoin('$base/assets/coin/cara/cara.png', _caraColor, 1.0);
-  _writeCoin('$base/assets/coin/cruz/cruz.png', _cruzColor, 1.0);
-
   for (var i = 0; i < _frameCount; i++) {
-    final angle = i * math.pi / 6; // 30° per frame, 360° over the sequence
+    final angle = i * 2 * math.pi / _frameCount; // 10° per frame, 360° total
     final squish = _clampD(math.cos(angle).abs(), 0.08, 1.0);
     final colorT = (1 - math.cos(angle)) / 2; // 0 = cara, 1 = cruz
     final edgeShade = 0.55 + 0.45 * squish; // the thin edge sits in shadow
+    final speedT = math.sin(angle).abs(); // 0 = full-face, 1 = edge-on
 
     final frameColor = _lerpRgb(_caraColor, _cruzColor, colorT)
         .map((c) => _clampI((c * edgeShade).round(), 0, 255))
         .toList();
 
     final name = 'frame_${i.toString().padLeft(2, '0')}.png';
-    _writeCoin('$base/assets/coin/flip_sequence/$name', frameColor, squish);
+    _writeCoin(
+      '$base/assets/coin/flip_sequence/$name',
+      frameColor,
+      squish,
+      blurRadius: (speedT * _maxBlurPx).round(),
+      speedFade: speedT,
+    );
   }
 
   // ignore: avoid_print
-  print('Generated 14 placeholder coin PNGs (2 faces + 12 flip frames)');
+  print(
+    'Generated $_frameCount placeholder flip-sequence PNGs '
+    '(cara.png/cruz.png are real art and were left untouched).',
+  );
 }
 
 /// Draws a shaded metallic circle (squished vertically by [squish], 1.0 =
 /// full face-on) with a soft drop shadow, on a transparent canvas. The
 /// vertical squish simulates a coin tumbling end-over-end through the air
 /// (as opposed to spinning flat like a top, which would squish sideways).
-void _writeCoin(String path, List<int> baseColor, double squish) {
+///
+/// [blurRadius] applies a vertical motion blur (0 = none) and [speedFade]
+/// (0..1) slightly lowers the coin's alpha — both simulate the coin moving
+/// too fast to see clearly, see the file-level doc comment.
+void _writeCoin(
+  String path,
+  List<int> baseColor,
+  double squish, {
+  int blurRadius = 0,
+  double speedFade = 0.0,
+}) {
   const size = _canvasSize;
   final pixels = Uint8List(size * size * 4);
 
@@ -97,6 +126,7 @@ void _writeCoin(String path, List<int> baseColor, double squish) {
       } else {
         alpha = (1 + edgeBand - dist) / (2 * edgeBand);
       }
+      alpha *= (1 - speedFade * 0.22);
 
       if (alpha > 0) {
         // Offset highlight (upper-left light source) fading through the
@@ -123,7 +153,47 @@ void _writeCoin(String path, List<int> baseColor, double squish) {
     }
   }
 
-  _writePngRGBA(path, size, size, pixels);
+  final finalPixels = _verticalBoxBlur(pixels, size, blurRadius);
+  _writePngRGBA(path, size, size, finalPixels);
+}
+
+/// Vertical box blur over an RGBA buffer, averaging in premultiplied-alpha
+/// space so transparent neighbors don't bleed black into the coin's edge.
+/// No-op when [radius] is 0.
+Uint8List _verticalBoxBlur(Uint8List pixels, int size, int radius) {
+  if (radius <= 0) return pixels;
+
+  final out = Uint8List(pixels.length);
+  for (var x = 0; x < size; x++) {
+    for (var y = 0; y < size; y++) {
+      var rSum = 0, gSum = 0, bSum = 0, aSum = 0, count = 0;
+      for (var k = -radius; k <= radius; k++) {
+        final sy = y + k;
+        if (sy < 0 || sy >= size) continue;
+        final idx = (sy * size + x) * 4;
+        final a = pixels[idx + 3];
+        rSum += pixels[idx] * a;
+        gSum += pixels[idx + 1] * a;
+        bSum += pixels[idx + 2] * a;
+        aSum += a;
+        count++;
+      }
+      final idx = (y * size + x) * 4;
+      final outAlpha = count == 0 ? 0 : (aSum / count).round();
+      if (aSum == 0) {
+        out[idx] = 0;
+        out[idx + 1] = 0;
+        out[idx + 2] = 0;
+        out[idx + 3] = 0;
+      } else {
+        out[idx] = _clampI((rSum / aSum).round(), 0, 255);
+        out[idx + 1] = _clampI((gSum / aSum).round(), 0, 255);
+        out[idx + 2] = _clampI((bSum / aSum).round(), 0, 255);
+        out[idx + 3] = _clampI(outAlpha, 0, 255);
+      }
+    }
+  }
+  return out;
 }
 
 /// Alpha "source-over" compositing of [fg] over [bg], both [r, g, b, a].
