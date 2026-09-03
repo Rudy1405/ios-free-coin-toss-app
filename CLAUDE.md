@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 App Flutter "Cara o Cruz" (heads/tails). Paquete Dart `cara_o_cruz`, org `com.caracruz`. UI localizada según el idioma del sistema operativo (ver "Localización" más abajo; fallback a español), tema oscuro Cupertino (iOS-like). Reconstruida siguiendo la guía `../claude_deploy.md` (repo padre `toss_coin/`).
 
-Flujo: tap o swipe-up sobre la moneda → el resultado se sortea de inmediato con `Random.secure()` → la cara estática (arte real, ver `assets_ref/coins/`) se desvanece hacia la secuencia de giro (sprites procedurales, 36 frames, ~60fps, con motion blur creciente hacia las poses de canto) → la moneda cae en el frame que corresponde al resultado ya decidido y se desvanece de vuelta hacia la cara estática correspondiente → aparece una etiqueta glassmorphism con el resultado localizado ("CARA"/"CRUZ" en español, "HEADS"/"TAILS" en inglés) → el resultado se persiste en Hive y se muestra en una fila de historial (últimos 5, más reciente primero).
+Flujo: tap o swipe-up sobre la moneda → el resultado se sortea de inmediato con `Random.secure()` → la cara estática (arte real, ver `assets_ref/coins/`) se desvanece hacia la secuencia de giro (sprites procedurales, 36 frames, ~60fps, con motion blur creciente hacia las poses de canto) → la moneda cae en el frame que corresponde al resultado ya decidido y se desvanece de vuelta hacia la cara estática correspondiente → aparece una etiqueta glassmorphism con el resultado localizado ("CARA"/"CRUZ" en español, "HEADS"/"TAILS" en inglés) → el resultado se persiste en Hive y se muestra en una fila de historial con scroll horizontal (últimos 10, más reciente primero).
 
 Además, un botón hamburguesa en la esquina superior izquierda abre un panel lateral con un único ítem, "Acerca de" (localizado), que lleva a una pantalla informativa estática — ver "Navegación — menú y Acerca de" más abajo.
 
@@ -49,7 +49,7 @@ lib/
     │   ├── coin_state.dart                # CoinStateNotifier (Riverpod)
     │   └── coin_screen.dart               # UI: gesto, imagen animada, glass label, history row, botón hamburguesa
     ├── history/
-    │   ├── history_repository.dart        # Hive Box<String>, máx 5 registros FIFO
+    │   ├── history_repository.dart        # Hive Box<String>, máx 10 registros FIFO
     │   └── history_provider.dart          # historyRepositoryProvider + historyProvider
     ├── menu/menu_panel.dart       # openMenuPanel() + panel lateral (único ítem: "Acerca de")
     ├── about/about_screen.dart    # pantalla "Acerca de": emoji 🪙 + texto centrado + botón de atrás

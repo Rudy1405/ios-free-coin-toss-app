@@ -19,7 +19,7 @@ class FlipRecord {
 
 class HistoryRepository {
   static const _boxName = 'flip_history';
-  static const _maxEntries = 5;
+  static const _maxEntries = 10;
 
   late Box<String> _box;
 
@@ -36,7 +36,7 @@ class HistoryRepository {
     }
   }
 
-  List<FlipRecord> getLastFive() {
+  List<FlipRecord> getRecentFlips() {
     return _box.values.map(FlipRecord.decode).toList().reversed.toList();
   }
 }
