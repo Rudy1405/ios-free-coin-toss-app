@@ -7,7 +7,7 @@ App de Flutter para lanzar una moneda ("Cara o Cruz" / heads-or-tails). Interfaz
 - Toca la moneda (o desliza hacia arriba) para lanzarla.
 - El resultado se decide al instante con `Random.secure()`; la cara estática se desvanece hacia una animación de 36 frames (~60fps, con motion blur) que simula el giro, y la moneda cae en el resultado ya sorteado, desvaneciéndose de vuelta a la cara estática correspondiente.
 - Al aterrizar aparece una etiqueta con efecto glassmorphism: **CARA** o **CRUZ**.
-- Los últimos 5 lanzamientos se guardan localmente (Hive) y se muestran en una fila de historial con hora, más reciente primero.
+- Los últimos 10 lanzamientos se guardan localmente (Hive) y se muestran en una fila de historial con scroll horizontal, con hora, más reciente primero.
 
 ## Stack
 

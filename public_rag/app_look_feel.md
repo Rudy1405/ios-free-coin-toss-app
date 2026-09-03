@@ -28,6 +28,14 @@ Pasadas siguientes, mismo día:
    original (T1/T2 no cubrían párrafo largo). Ver "Navegación — menú
    hamburguesa y Acerca de" más abajo.
 
+Actualización — 2026-09-03:
+
+5. Se duplicó la capacidad del historial (5 → 10) y `_HistoryRow` pasó a ser
+   scrolleable horizontalmente (`SingleChildScrollView`, mismo chip y mismo
+   contenedor E2, sin rediseño) para acomodar los 10 registros sin
+   desbordar la pantalla — ver "Historial — chips horizontales (L2)" más
+   abajo.
+
 ## Principio rector
 
 La app se mantiene **Cupertino oscuro** (sin Material, sin fuentes de Google
@@ -222,10 +230,18 @@ propio:
 - El contenedor exterior (`_HistoryRow`) usa el mismo tratamiento E2 que el
   label de resultado, pero sin tinte de una paleta específica (contiene
   tiradas mixtas).
+- Con la capacidad duplicada a 10 registros, los chips ya no entran todos
+  en pantalla a la vez — `_HistoryRow` envuelve el `Row` en un
+  `SingleChildScrollView(scrollDirection: Axis.horizontal)` en vez de
+  `mainAxisAlignment: spaceEvenly`. El chip y el contenedor no cambiaron;
+  solo el espaciado pasó de "repartido a lo ancho" a un `SizedBox(width: 8)`
+  fijo entre chips, y con pocos registros (1-4) la fila queda alineada a la
+  izquierda en vez de centrada — trade-off aceptado de habilitar scroll en
+  vez de rediseñar el layout.
 
 `L1` (lista agrupada estilo Ajustes.app, una fila por tirada con separador)
-queda documentado como alternativa si el historial se muda a una pantalla
-propia con más de 5 registros.
+queda documentado como alternativa si el historial crece más allá de estos
+10 registros o si el scroll horizontal deja de ser suficiente.
 
 ## Navegación — menú hamburguesa y Acerca de
 

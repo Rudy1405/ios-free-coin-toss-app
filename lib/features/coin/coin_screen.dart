@@ -346,9 +346,17 @@ class _HistoryRow extends StatelessWidget {
                 ),
               ],
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: records.map((r) => _HistoryChip(record: r)).toList(),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < records.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 8),
+                    _HistoryChip(record: records[i]),
+                  ],
+                ],
+              ),
             ),
           ),
         ),

@@ -17,6 +17,12 @@
 # Claude Code local settings
 .claude/settings.local.json
 
+# Local-only docs (personal working notes, not for the repo)
+/CI_CD.md
+
+# Local-only Claude Code skills (personal workflow automation, not for the repo)
+/.claude/skills/feature-branch/
+
 
 
 # Flutter repo-specific

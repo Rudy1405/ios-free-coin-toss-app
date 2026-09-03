@@ -12,12 +12,12 @@ final historyProvider =
 });
 
 class HistoryNotifier extends StateNotifier<List<FlipRecord>> {
-  HistoryNotifier(this._repo) : super(_repo.getLastFive());
+  HistoryNotifier(this._repo) : super(_repo.getRecentFlips());
 
   final HistoryRepository _repo;
 
   Future<void> recordFlip(String result) async {
     await _repo.saveFlip(result);
-    state = _repo.getLastFive();
+    state = _repo.getRecentFlips();
   }
 }
