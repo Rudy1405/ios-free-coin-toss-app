@@ -6,9 +6,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/glass_icon_button.dart';
 import '../../core/theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../history/history_provider.dart';
 import '../history/history_repository.dart';
+import '../menu/menu_panel.dart';
 import 'coin_animation_controller.dart';
 import 'coin_rng_service.dart';
 import 'coin_state.dart';
@@ -139,6 +142,7 @@ class _CoinScreenState extends ConsumerState<CoinScreen>
   Widget build(BuildContext context) {
     final coinState = ref.watch(coinStateProvider);
     final history = ref.watch(historyProvider);
+    final l10n = AppLocalizations.of(context)!;
     final screenSize = MediaQuery.of(context).size;
     final coinSize = math
         .min(screenSize.width * 0.6, screenSize.height * 0.4)
@@ -162,73 +166,89 @@ class _CoinScreenState extends ConsumerState<CoinScreen>
           ),
         ),
         child: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      GestureDetector(
-                        onTap: _handleFlip,
-                        onVerticalDragEnd: (details) {
-                          if (details.velocity.pixelsPerSecond.dy < -100) {
-                            _handleFlip();
-                          }
-                        },
-                        child: AnimatedBuilder(
-                          animation: _landingScale,
-                          builder: (context, child) => Transform.scale(
-                            scale: _landingScale.value,
-                            child: child,
-                          ),
-                          child: SizedBox(
-                            width: coinSize,
-                            height: coinSize,
+              Column(
+                children: [
+                  Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          GestureDetector(
+                            onTap: _handleFlip,
+                            onVerticalDragEnd: (details) {
+                              if (details.velocity.pixelsPerSecond.dy < -100) {
+                                _handleFlip();
+                              }
+                            },
                             child: AnimatedBuilder(
-                              animation: _staticOpacity,
-                              builder: (context, child) {
-                                final staticOpacity = _staticOpacity.value;
-                                return Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    Opacity(
-                                      opacity: 1 - staticOpacity,
-                                      child: Image.asset(
-                                        _frameAssetPath,
-                                        fit: BoxFit.contain,
-                                        gaplessPlayback: true,
-                                      ),
-                                    ),
-                                    Opacity(
-                                      opacity: staticOpacity,
-                                      child: Image.asset(
-                                        _staticAssetPath,
-                                        fit: BoxFit.contain,
-                                        gaplessPlayback: true,
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
+                              animation: _landingScale,
+                              builder: (context, child) => Transform.scale(
+                                scale: _landingScale.value,
+                                child: child,
+                              ),
+                              child: SizedBox(
+                                width: coinSize,
+                                height: coinSize,
+                                child: AnimatedBuilder(
+                                  animation: _staticOpacity,
+                                  builder: (context, child) {
+                                    final staticOpacity = _staticOpacity.value;
+                                    return Stack(
+                                      fit: StackFit.expand,
+                                      children: [
+                                        Opacity(
+                                          opacity: 1 - staticOpacity,
+                                          child: Image.asset(
+                                            _frameAssetPath,
+                                            fit: BoxFit.contain,
+                                            gaplessPlayback: true,
+                                          ),
+                                        ),
+                                        Opacity(
+                                          opacity: staticOpacity,
+                                          child: Image.asset(
+                                            _staticAssetPath,
+                                            fit: BoxFit.contain,
+                                            gaplessPlayback: true,
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                          const SizedBox(height: 32),
+                          if (coinState.status == CoinStatus.result &&
+                              coinState.lastResult != null)
+                            _GlassLabel(
+                              text: coinState.lastResult == FlipResult.cara
+                                  ? l10n.heads
+                                  : l10n.tails,
+                              palette: palette,
+                            ),
+                        ],
                       ),
-                      const SizedBox(height: 32),
-                      if (coinState.status == CoinStatus.result &&
-                          coinState.lastResult != null)
-                        _GlassLabel(
-                          text: coinState.lastResult == FlipResult.cara
-                              ? 'CARA'
-                              : 'CRUZ',
-                          palette: palette,
-                        ),
-                    ],
+                    ),
+                  ),
+                  if (history.isNotEmpty) _HistoryRow(records: history),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: GlassIconButton(
+                    icon: CupertinoIcons.line_horizontal_3,
+                    palette: palette,
+                    semanticLabel: l10n.menuButtonSemanticLabel,
+                    onPressed: () => openMenuPanel(context),
                   ),
                 ),
               ),
-              if (history.isNotEmpty) _HistoryRow(records: history),
             ],
           ),
         ),
@@ -346,7 +366,8 @@ class _HistoryChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final isCara = record.result == 'cara';
     final palette = isCara ? CoinPalette.cara : CoinPalette.cruz;
-    final label = isCara ? 'CARA' : 'CRUZ';
+    final l10n = AppLocalizations.of(context)!;
+    final label = isCara ? l10n.heads : l10n.tails;
     final time = DateFormat.Hm().format(record.timestamp);
 
     return Container(

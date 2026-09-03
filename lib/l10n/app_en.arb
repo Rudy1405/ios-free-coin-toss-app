@@ -1,0 +1,9 @@
+{
+  "@@locale": "en",
+  "heads": "HEADS",
+  "tails": "TAILS",
+  "menuButtonSemanticLabel": "Menu",
+  "aboutMenuItem": "About",
+  "backButtonSemanticLabel": "Back",
+  "aboutBody": "This is a simple app — always free, no ads, no gimmicks. Just flip your coin and go."
+}

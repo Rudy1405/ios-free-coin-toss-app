@@ -1,5 +1,4 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -7,6 +6,7 @@ import 'core/theme.dart';
 import 'features/coin/coin_screen.dart';
 import 'features/history/history_provider.dart';
 import 'features/history/history_repository.dart';
+import 'l10n/app_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,13 +33,11 @@ class CaraOCruzApp extends StatelessWidget {
     return CupertinoApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
-      locale: const Locale('es'),
-      supportedLocales: const [Locale('es')],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
+      // Sigue el idioma del sistema operativo; si no está soportado, cae a
+      // `supportedLocales.first` (es, forzado por `preferred-supported-locales`
+      // en l10n.yaml — ver CLAUDE.md).
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
       home: const CoinScreen(),
     );
   }

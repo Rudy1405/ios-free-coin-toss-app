@@ -22,6 +22,11 @@ Pasadas siguientes, mismo día:
 3. El acento de CRUZ (P2) volvió al índigo/teal original de la propuesta,
    revirtiendo el acero neutro de una iteración intermedia — ver la nota de
    diseño en "Paleta condicional" más abajo.
+4. Se agregó el menú hamburguesa (panel lateral + pantalla "Acerca de") —
+   reutiliza P1/P2 y el material E2 tal cual, sin paleta ni material nuevos;
+   se sumó **T3**, una tipografía de cuerpo que no estaba en la propuesta
+   original (T1/T2 no cubrían párrafo largo). Ver "Navegación — menú
+   hamburguesa y Acerca de" más abajo.
 
 ## Principio rector
 
@@ -122,6 +127,23 @@ vidrio plano original (blur + color sólido), el contenedor usa:
 `E1` (vidrio fino, sin gradiente ni glow) queda documentado como alternativa
 más discreta si en algún momento el E2 se siente demasiado cargado.
 
+**Nuevas superficies E2 (menú hamburguesa)** — misma receta, dos formas más:
+
+- `GlassIconButton` (`lib/core/glass_icon_button.dart`): versión circular de
+  44×44pt, gradiente blanco 14%→4%, blur 14px, mismas dos `BoxShadow` que
+  `_GlassLabel` (oscura + glow de acento). Reutilizada tal cual por el botón
+  hamburguesa (`CoinScreen`) y el botón de atrás (`AboutScreen`) — solo
+  cambia el ícono y el callback.
+- Panel del menú (`_MenuPanel`, `features/menu/menu_panel.dart`): el mismo
+  gradiente blanco (12%→3%, ligeramente más sutil por ser una superficie
+  grande) + blur 20px sobre toda la franja izquierda, con un borde derecho
+  `glassBorder` y una sombra oscura proyectada hacia la derecha
+  (`offset: (8, 0)`) en vez de hacia abajo, porque el panel es vertical.
+- `_AboutMenuButton` (mismo archivo): el único ítem del panel usa la receta
+  íntegra de `_GlassLabel` (blur 14px, gradiente 14%→4%, dos `BoxShadow`)
+  pero en formato botón de ancho completo, con ícono `CupertinoIcons.info_circle`
+  del color de acento a la izquierda del texto.
+
 ## Tipografía (T1)
 
 Sin fuente custom — Cupertino ya resuelve a San Francisco nativo en iOS; traer
@@ -133,6 +155,19 @@ iOS. La mejora es de **escala**, no de familia.
   texto de botón.
 - Chips de historial: sin cambios (`fontSize: 11`, `w600`, `letterSpacing: 1`)
   — a esa escala son metadata, no protagonistas.
+- Ítem del menú (`_AboutMenuButton`): `fontSize: 17`, `w600`, sin
+  `letterSpacing` custom — escala de botón estándar de iOS, no de titular.
+
+### T3 — Cuerpo informativo (`AboutScreen`)
+
+Primera vez que la app necesita párrafo largo, no titular ni metadata.
+`fontSize: 18`, `fontWeight: w500` (más liviano que el `w700` del resultado
+— es texto para leer, no para gritar), `height: 1.4` (interlineado holgado,
+el titular de `_GlassLabel` no lo necesita por ser una sola línea),
+`letterSpacing: -0.2`, color blanco fijo (no depende de `accent`, a
+diferencia de T2 — es texto de lectura, no un dato). Centrado con
+`textAlign: TextAlign.center` y acotado a `maxWidth: 480` para que no se
+estire demasiado en pantallas anchas (desktop/web).
 
 ### T2 — Acento numérico (NO implementado)
 
@@ -168,8 +203,11 @@ Implementadas en `_CoinScreenState` (`coin_screen.dart`):
   testearse sin árbol de widgets). El rebote es una capa puramente visual
   encima, no reemplaza ni modifica esa lógica.
 
-`H1` (haptic al iniciar el tiro) y `H3` (auditoría del área táctil mínima
-44×44pt) quedaron fuera de esta iteración — no están implementados.
+`H1` (haptic al iniciar el tiro) quedó fuera de esta iteración — no está
+implementado. `H3` (área táctil mínima 44×44pt) sigue sin una auditoría
+completa del resto de la UI, pero ya se aplica puntualmente a los dos
+controles nuevos: `GlassIconButton` (hamburguesa y atrás) mide exactamente
+44×44pt.
 
 ## Historial — chips horizontales (L2)
 
@@ -188,3 +226,30 @@ propio:
 `L1` (lista agrupada estilo Ajustes.app, una fila por tirada con separador)
 queda documentado como alternativa si el historial se muda a una pantalla
 propia con más de 5 registros.
+
+## Navegación — menú hamburguesa y Acerca de
+
+- **Botón hamburguesa**: `GlassIconButton` con `CupertinoIcons.line_horizontal_3`,
+  esquina superior izquierda, `Padding(16)` dentro del `SafeArea` de
+  `CoinScreen`. Sigue la paleta activa (P1/P2) como el resto de la UI, no un
+  color neutro fijo.
+- **Panel del menú**: ocupa `78%` del ancho de pantalla, acotado entre
+  240–320px (mismo patrón de `clamp` que el tamaño de la moneda), esquinas
+  derechas redondeadas (`24px`). Desliza desde la izquierda en 260ms
+  (`Curves.easeOutCubic`) con un scrim oscuro (`black @ 55%`) detrás,
+  animado automáticamente por el framework junto con la ruta. Contenido
+  anclado abajo (`Spacer()` arriba del único botón) — deja espacio para
+  agregar más ítems arriba en el futuro sin rediseñar el panel.
+- **Pantalla "Acerca de"**: mismo fondo degradado condicional que `CoinScreen`
+  (P1/P2 según `lastResult`), sin `AnimatedContainer` porque la paleta no
+  puede cambiar mientras esa pantalla está abierta. Contenido centrado
+  vertical y horizontalmente: emoji de moneda (`🪙`, `fontSize: 96` — el
+  glifo lo dibuja el SO, no hay asset custom, así que en iOS/Android/web
+  cada uno muestra su propio estilo de emoji) seguido del texto T3 a 28px
+  de separación. Botón de atrás (`GlassIconButton` con `CupertinoIcons.back`)
+  en la esquina superior izquierda, mismo slot visual que el botón
+  hamburguesa en `CoinScreen` — refuerza que es "el mismo botón" cambiando
+  de ícono según el contexto.
+- Ambas superficies traen `semanticLabel`/`Semantics(button: true)` en sus
+  botones de ícono (menú, atrás) — son botones de solo-ícono, sin esa
+  etiqueta un lector de pantalla no tendría cómo anunciarlos.

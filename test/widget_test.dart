@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cara_o_cruz/features/coin/coin_screen.dart';
 import 'package:cara_o_cruz/features/history/history_provider.dart';
 import 'package:cara_o_cruz/features/history/history_repository.dart';
+import 'package:cara_o_cruz/l10n/app_localizations.dart';
 
 class FakeHistoryRepository extends HistoryRepository {
   final List<String> _entries = [];
@@ -33,7 +34,11 @@ void main() {
         overrides: [
           historyRepositoryProvider.overrideWithValue(fakeRepo),
         ],
-        child: const CupertinoApp(home: CoinScreen()),
+        child: const CupertinoApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: CoinScreen(),
+        ),
       ),
     );
 
