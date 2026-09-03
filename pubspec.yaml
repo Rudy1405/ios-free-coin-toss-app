@@ -17,6 +17,7 @@ dependencies:
   intl: any
   home_widget: ^0.7.0
   cupertino_icons: ^1.0.8
+  audioplayers: ^6.8.1
 
 dev_dependencies:
   flutter_test:
@@ -31,3 +32,4 @@ flutter:
     - assets/coin/cara/
     - assets/coin/cruz/
     - assets/coin/flip_sequence/
+    - assets/coin_sounds/
