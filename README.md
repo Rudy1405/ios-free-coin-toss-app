@@ -127,3 +127,4 @@ lib/
 ```
 
 Más detalle de arquitectura en [`CLAUDE.md`](CLAUDE.md).
+
