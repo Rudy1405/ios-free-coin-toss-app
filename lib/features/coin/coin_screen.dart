@@ -131,7 +131,18 @@ class _CoinScreenState extends ConsumerState<CoinScreen>
 
   void _handleFlip() {
     final status = ref.read(coinStateProvider).status;
-    if (status != CoinStatus.idle && status != CoinStatus.result) return;
+
+    // Multi-tap/multi-swipe while already flipping: extend the same spin
+    // instead of ignoring the input or drawing a new result — the result
+    // is fixed the instant the first tap starts the flip (see CLAUDE.md,
+    // "por qué el resultado se decide antes de animar") and must stay
+    // fixed no matter how many extra taps land before it lands.
+    if (status == CoinStatus.flipping) {
+      if (_animController.extendSpin()) {
+        HapticFeedback.lightImpact();
+      }
+      return;
+    }
 
     final notifier = ref.read(coinStateProvider.notifier);
     notifier.startFlip();
