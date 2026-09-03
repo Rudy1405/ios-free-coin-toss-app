@@ -37,10 +37,6 @@ class HistoryRepository {
   }
 
   List<FlipRecord> getLastFive() {
-    return _box.values
-        .map(FlipRecord.decode)
-        .toList()
-        .reversed
-        .toList();
+    return _box.values.map(FlipRecord.decode).toList().reversed.toList();
   }
 }

@@ -1,0 +1,36 @@
+name: Main
+
+# Strict gate: only accepts PRs whose source branch is develop, then runs
+# the same suite with fatal-infos analyze + formatting enforced.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: main-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guard-source-branch:
+    name: Require PR source is develop
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check source branch
+        run: |
+          if [ "${{ github.head_ref }}" != "develop" ]; then
+            echo "::error::Pull requests into main must come from the develop branch (got '${{ github.head_ref }}')."
+            exit 1
+          fi
+
+  ci:
+    name: Flutter CI (main)
+    needs: guard-source-branch
+    if: always() && (needs.guard-source-branch.result == 'success' || needs.guard-source-branch.result == 'skipped')
+    uses: ./.github/workflows/flutter-ci-reusable.yml
+    with:
+      strict: true

@@ -1,0 +1,56 @@
+name: Flutter CI (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      strict:
+        description: "Enable stricter checks (fatal-infos analyze, format check) used by main"
+        required: false
+        type: boolean
+        default: false
+
+env:
+  FLUTTER_VERSION: "3.47.2"
+
+jobs:
+  analyze-and-test:
+    name: Analyze & test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Cache pub packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            pub-${{ runner.os }}-
+
+      # `flutter pub get` also regenerates lib/l10n/app_localizations*.dart
+      # (generate: true in pubspec.yaml) — required before analyze/test.
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify formatting
+        if: ${{ inputs.strict }}
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze (strict)
+        if: ${{ inputs.strict }}
+        run: flutter analyze --fatal-infos
+
+      - name: Analyze
+        if: ${{ !inputs.strict }}
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test

@@ -1,0 +1,22 @@
+name: Develop
+
+# Lenient gate: runs on every branch (feature work "on its own branch") and
+# again on PRs into develop (validates the merge-with-develop result).
+on:
+  push:
+    branches-ignore:
+      - main
+  pull_request:
+    branches:
+      - develop
+
+concurrency:
+  group: develop-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Flutter CI (develop)
+    uses: ./.github/workflows/flutter-ci-reusable.yml
+    with:
+      strict: false

@@ -6,7 +6,8 @@ final historyRepositoryProvider = Provider<HistoryRepository>((ref) {
   throw UnimplementedError('Must be overridden at app startup');
 });
 
-final historyProvider = StateNotifierProvider<HistoryNotifier, List<FlipRecord>>((ref) {
+final historyProvider =
+    StateNotifierProvider<HistoryNotifier, List<FlipRecord>>((ref) {
   return HistoryNotifier(ref.watch(historyRepositoryProvider));
 });
 
