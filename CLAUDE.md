@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Qué es
 
-App Flutter "Cara o Cruz" (heads/tails). Paquete Dart `cara_o_cruz`, org `com.caracruz`. UI en español (locale `es`), tema oscuro Cupertino (iOS-like). Reconstruida siguiendo la guía `../claude_deploy.md` (repo padre `toss_coin/`).
+App Flutter "Cara o Cruz" (heads/tails). Paquete Dart `cara_o_cruz`, org `com.caracruz`. UI localizada según el idioma del sistema operativo (ver "Localización" más abajo; fallback a español), tema oscuro Cupertino (iOS-like). Reconstruida siguiendo la guía `../claude_deploy.md` (repo padre `toss_coin/`).
 
-Flujo: tap o swipe-up sobre la moneda → el resultado se sortea de inmediato con `Random.secure()` → la cara estática (arte real, ver `assets_ref/coins/`) se desvanece hacia la secuencia de giro (sprites procedurales, 36 frames, ~60fps, con motion blur creciente hacia las poses de canto) → la moneda cae en el frame que corresponde al resultado ya decidido y se desvanece de vuelta hacia la cara estática correspondiente → aparece una etiqueta glassmorphism ("CARA"/"CRUZ") → el resultado se persiste en Hive y se muestra en una fila de historial (últimos 5, más reciente primero).
+Flujo: tap o swipe-up sobre la moneda → el resultado se sortea de inmediato con `Random.secure()` → la cara estática (arte real, ver `assets_ref/coins/`) se desvanece hacia la secuencia de giro (sprites procedurales, 36 frames, ~60fps, con motion blur creciente hacia las poses de canto) → la moneda cae en el frame que corresponde al resultado ya decidido y se desvanece de vuelta hacia la cara estática correspondiente → aparece una etiqueta glassmorphism con el resultado localizado ("CARA"/"CRUZ" en español, "HEADS"/"TAILS" en inglés) → el resultado se persiste en Hive y se muestra en una fila de historial (últimos 5, más reciente primero).
+
+Además, un botón hamburguesa en la esquina superior izquierda abre un panel lateral con un único ítem, "Acerca de" (localizado), que lleva a una pantalla informativa estática — ver "Navegación — menú y Acerca de" más abajo.
 
 ## Comandos
 
@@ -17,7 +19,8 @@ $env:Path += ";$env:USERPROFILE\flutter_sdk\flutter\bin"
 ```
 
 ```bash
-flutter pub get                         # instalar dependencias
+flutter pub get                         # instalar dependencias; también regenera lib/l10n/app_localizations*.dart (generate: true + l10n.yaml)
+flutter gen-l10n                        # regenerar solo las clases de localización (p.ej. tras editar un .arb), sin bajar dependencias
 dart run generate_placeholders.dart     # (re)generar los 36 PNG del flip_sequence; NO toca cara.png/cruz.png (arte real)
 flutter analyze                         # debe dar 0 issues
 flutter test                            # corre todos los tests
@@ -32,16 +35,24 @@ flutter run -d windows                  # requiere Developer Mode de Windows act
 ```
 lib/
 ├── main.dart                      # init Hive → crea HistoryRepository → ProviderScope(overrides: [historyRepositoryProvider]) → CupertinoApp
-├── core/theme.dart                # AppTheme.dark / .light (CupertinoThemeData)
+├── core/
+│   ├── theme.dart                 # AppTheme.dark / .light (CupertinoThemeData), CoinPalette
+│   └── glass_icon_button.dart     # botón circular E2 reutilizado por el hamburguesa y el de atrás
+├── l10n/
+│   ├── app_es.arb                 # strings fuente (template-arb-file en l10n.yaml), es = fallback
+│   ├── app_en.arb                 # traducciones al inglés
+│   └── app_localizations*.dart    # generados por `flutter gen-l10n`/`flutter pub get` — gitignored, NO editar a mano
 └── features/
     ├── coin/
     │   ├── coin_rng_service.dart          # FlipResult{cara,cruz}; Random.secure()
     │   ├── coin_animation_controller.dart # sprite sequencer basado en Timer.periodic
     │   ├── coin_state.dart                # CoinStateNotifier (Riverpod)
-    │   └── coin_screen.dart               # UI: gesto, imagen animada, glass label, history row
+    │   └── coin_screen.dart               # UI: gesto, imagen animada, glass label, history row, botón hamburguesa
     ├── history/
     │   ├── history_repository.dart        # Hive Box<String>, máx 5 registros FIFO
     │   └── history_provider.dart          # historyRepositoryProvider + historyProvider
+    ├── menu/menu_panel.dart       # openMenuPanel() + panel lateral (único ítem: "Acerca de")
+    ├── about/about_screen.dart    # pantalla "Acerca de": emoji 🪙 + texto centrado + botón de atrás
     └── widget/coin_widget_service.dart    # bridge a home_widget (iOS home-screen widget), stub sin extensión nativa
 ```
 
@@ -57,6 +68,25 @@ Flujo de estado entre capas, de arriba a abajo:
 **Crossfade cara-estática ↔ frames de giro:** `CoinScreen` dibuja dos `Image.asset` superpuestas (Stack) — una para la cara estática (arte real) y otra para el frame de giro actual — y cruza su opacidad con un `AnimationController` propio (`_crossfadeController`, 140ms al arrancar el giro, 220ms al aterrizar), separado del sequencer de frames por la misma razón de testabilidad que el rebote de aterrizaje (`_landingController`). Esto evita el corte brusco entre el arte detallado (estático) y los frames procedurales de baja fidelidad del `flip_sequence`.
 
 **Inyección de `HistoryRepository`:** se registra como `Provider` que lanza `UnimplementedError` por defecto y se sobreescribe en `main.dart` con la instancia real de Hive. Los tests (`widget_test.dart`) inyectan un `FakeHistoryRepository` de la misma forma, sin tocar Hive.
+
+## Navegación — menú y Acerca de
+
+- **`openMenuPanel(context)`** (`features/menu/menu_panel.dart`) empuja una `PageRouteBuilder` transparente y no-opaca que desliza el panel desde el borde izquierdo (`SlideTransition`, `Offset(-1,0) → Offset.zero`, 260ms). No es un `Drawer` de Material — se construye a mano porque `CoinScreen` usa `CupertinoPageScaffold`, que no trae uno.
+- **Cerrar el panel es gratis**: `barrierDismissible: true` + `barrierColor` hacen que Flutter inserte un `ModalBarrier` a pantalla completa *debajo* del panel — como el panel solo pinta/hit-testea su franja izquierda (`Align(alignment: centerLeft)`), tocar a la derecha del panel golpea el barrier y cierra la ruta sin gesture detector propio. El botón/gesto de atrás del sistema hace lo mismo por el comportamiento default de `Navigator` (pop del tope de la pila) — no hace falta `PopScope` ni manejo manual.
+- **`AboutScreen`** (`features/about/about_screen.dart`) se empuja con `CupertinoPageRoute` normal desde el botón del panel (que primero hace `pop()` del panel y luego `push()` de la pantalla). Por ser `CupertinoPageRoute`, el swipe-back de iOS y el botón/gesto de atrás de Android ya quedan habilitados — el botón de atrás visible en la esquina (`GlassIconButton` con `CupertinoIcons.back`) es solo un atajo más, llama a `Navigator.of(context).maybePop()`.
+- Tanto el panel como `AboutScreen` leen `ref.watch(coinStateProvider).lastResult` y usan `CoinPalette.forResult(...)` — heredan la paleta condicional activa (P1/P2) en vez de un color fijo, igual que `CoinScreen`.
+
+## Localización
+
+El texto de la UI sigue el idioma del sistema operativo vía el mecanismo estándar de Flutter (`flutter gen-l10n`, paquete `AppLocalizations` generado — sin `flutter_gen`/synthetic package, esa opción fue removida en la versión de Flutter de esta máquina, así que los archivos generados quedan directamente en `lib/l10n/`, no en `.dart_tool/`).
+
+- **Fuente de verdad**: `lib/l10n/app_es.arb` (template, es = idioma original de la app) y `lib/l10n/app_en.arb`. Cada string nuevo va como clave en inglés (p. ej. `heads`/`tails`, `menuButtonSemanticLabel`, `aboutMenuItem`, `backButtonSemanticLabel`, `aboutBody`) con su traducción por archivo `.arb`.
+- **`l10n.yaml`** fija `preferred-supported-locales: ["es"]` para que `AppLocalizations.supportedLocales` quede `[es, en]` (no alfabético) — el resolutor de locale de Flutter usa el primer elemento de esa lista como fallback cuando el idioma del SO no está soportado, así que sin este flag el fallback sería inglés por orden alfabético de los `.arb`, no español.
+- **`main.dart`** pasa `AppLocalizations.supportedLocales`/`.localizationsDelegates` a `CupertinoApp` sin fijar `locale:` — así Flutter resuelve el locale activo desde el SO en cada arranque.
+- **Uso en widgets**: `AppLocalizations.of(context)!.heads` / `.tails` (ver `coin_screen.dart`, `_GlassLabel` y `_HistoryChip`). El `!` es seguro porque el delegate siempre está registrado en `main.dart` y en `test/widget_test.dart`.
+- **Los `.dart` generados (`app_localizations*.dart`) están gitignorados** — se regeneran solos en `flutter pub get` (gracias a `generate: true` en `pubspec.yaml`) o con `flutter gen-l10n`. Si `flutter analyze`/`flutter test` fallan con "target of URI doesn't exist" para `l10n/app_localizations.dart`, correr `flutter pub get` primero.
+- **Para agregar un idioma**: crear `lib/l10n/app_<code>.arb` con las mismas claves que `app_es.arb`, correr `flutter gen-l10n`, listo — no hace falta tocar `main.dart`.
+- Los identificadores internos `FlipResult.cara`/`.cruz` y el string `'cara'`/`'cruz'` persistido en Hive (`FlipRecord.result`, ver `history_repository.dart`) **no** están localizados a propósito — son claves internas, no texto de UI; traducirlos rompería el historial ya guardado.
 
 ## Look & feel
 

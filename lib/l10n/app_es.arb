@@ -1,0 +1,27 @@
+{
+  "@@locale": "es",
+  "heads": "CARA",
+  "@heads": {
+    "description": "Etiqueta mostrada cuando la moneda cae en la cara 'cara'."
+  },
+  "tails": "CRUZ",
+  "@tails": {
+    "description": "Etiqueta mostrada cuando la moneda cae en la cara 'cruz'."
+  },
+  "menuButtonSemanticLabel": "Menú",
+  "@menuButtonSemanticLabel": {
+    "description": "Etiqueta de accesibilidad del botón hamburguesa que abre el panel de menú."
+  },
+  "aboutMenuItem": "Acerca de",
+  "@aboutMenuItem": {
+    "description": "Texto del único botón del panel de menú; abre la pantalla 'Acerca de'."
+  },
+  "backButtonSemanticLabel": "Atrás",
+  "@backButtonSemanticLabel": {
+    "description": "Etiqueta de accesibilidad del botón para cerrar la pantalla 'Acerca de' y volver a la principal."
+  },
+  "aboutBody": "Esta es una simple app, siempre gratis, sin publicidad, sin engaños, solo tira tu moneda y listo.",
+  "@aboutBody": {
+    "description": "Texto centrado de la pantalla 'Acerca de'."
+  }
+}
