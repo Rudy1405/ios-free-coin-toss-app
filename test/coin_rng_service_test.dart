@@ -25,6 +25,19 @@ void main() {
       expect(face, isA<FlipResult>());
       expect(FlipResult.values.contains(face), isTrue);
     });
+
+    test(
+      'getInitialFace distribution: 1000 calls land between 40-60% for each side',
+      () {
+        var caraCount = 0;
+        for (var i = 0; i < 1000; i++) {
+          if (service.getInitialFace() == FlipResult.cara) caraCount++;
+        }
+        final caraPercent = caraCount / 1000;
+        expect(caraPercent, greaterThanOrEqualTo(0.40));
+        expect(caraPercent, lessThanOrEqualTo(0.60));
+      },
+    );
   });
 
   group('CoinStateNotifier', () {
