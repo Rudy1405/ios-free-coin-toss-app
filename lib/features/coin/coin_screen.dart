@@ -14,6 +14,7 @@ import '../history/history_repository.dart';
 import '../menu/menu_panel.dart';
 import 'coin_animation_controller.dart';
 import 'coin_rng_service.dart';
+import 'coin_sound_service.dart';
 import 'coin_state.dart';
 
 // Must match `_frameCount` in generate_placeholders.dart — this app can't
@@ -41,6 +42,7 @@ class CoinScreen extends ConsumerStatefulWidget {
 class _CoinScreenState extends ConsumerState<CoinScreen>
     with TickerProviderStateMixin {
   late final CoinAnimationController _animController;
+  late final CoinSoundService _soundService;
   late final FlipResult _initialFace;
   late final AnimationController _landingController;
   late final Animation<double> _landingScale;
@@ -97,6 +99,7 @@ class _CoinScreenState extends ConsumerState<CoinScreen>
     );
 
     _animController = CoinAnimationController(framePaths: _framePaths);
+    _soundService = CoinSoundService();
 
     _animController.onFrameChanged = (_) {
       setState(() {
@@ -106,6 +109,7 @@ class _CoinScreenState extends ConsumerState<CoinScreen>
 
     _animController.onComplete = (result) {
       HapticFeedback.selectionClick(); // H2: haptic al revelar el resultado
+      _soundService.playLand(); // synced con el mismo instante del haptic
       setState(() {
         _staticAssetPath =
             result == CoinFace.cara ? _caraAssetPath : _cruzAssetPath;
@@ -119,6 +123,7 @@ class _CoinScreenState extends ConsumerState<CoinScreen>
   @override
   void dispose() {
     _animController.dispose();
+    _soundService.dispose();
     _landingController.dispose();
     _crossfadeController.dispose();
     super.dispose();
@@ -134,6 +139,7 @@ class _CoinScreenState extends ConsumerState<CoinScreen>
     final pending = notifier.pendingResult;
     if (pending != null) {
       _crossfadeController.reverse(from: 1);
+      _soundService.playFlip();
       _animController.play(_toCoinFace(pending));
     }
   }
