@@ -49,6 +49,35 @@ void main() {
   });
 
   testWidgets(
+    'history row does not render when there is no history yet',
+    (WidgetTester tester) async {
+      // Guards against ever shipping seeded/default history: a fresh
+      // HistoryRepository (real app: an empty Hive box on first launch)
+      // must show no history row at all, not an empty or placeholder one.
+      final fakeRepo = FakeHistoryRepository();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            historyRepositoryProvider.overrideWithValue(fakeRepo),
+          ],
+          child: const CupertinoApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: CoinScreen(),
+          ),
+        ),
+      );
+
+      final scrollFinder = find.byWidgetPredicate(
+        (w) =>
+            w is SingleChildScrollView && w.scrollDirection == Axis.horizontal,
+      );
+      expect(scrollFinder, findsNothing);
+    },
+  );
+
+  testWidgets(
     'history row holds all 10 entries and scrolls horizontally',
     (WidgetTester tester) async {
       final now = DateTime.now();
