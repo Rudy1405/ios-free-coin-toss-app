@@ -57,19 +57,18 @@ class CoinWidgetProvider : HomeWidgetProvider() {
         setViewVisibility(R.id.widget_emoji, View.VISIBLE)
         setViewVisibility(R.id.widget_result_image, View.GONE)
         setViewVisibility(R.id.widget_result_text, View.GONE)
-        setViewVisibility(R.id.widget_progress, View.GONE)
         setTextViewText(R.id.widget_subtitle, context.getString(R.string.coin_widget_tap_hint))
         setOnClickPendingIntent(R.id.widget_root, clickPendingIntent(context))
       }
     }
 
-    /** Sin `setOnClickPendingIntent`: un toque nuevo mientras carga no debe re-disparar el flip. */
+    /**
+     * Layout propio (`coin_widget_loading`), no `coin_widget`: el `ViewFlipper` con los 36 frames
+     * del giro real solo existe acá, así nunca queda corriendo de fondo detrás de idle/resultado.
+     * Sin `setOnClickPendingIntent`: un toque nuevo mientras carga no debe re-disparar el flip.
+     */
     fun buildLoadingViews(context: Context): RemoteViews {
-      return RemoteViews(context.packageName, R.layout.coin_widget).apply {
-        setViewVisibility(R.id.widget_emoji, View.GONE)
-        setViewVisibility(R.id.widget_result_image, View.GONE)
-        setViewVisibility(R.id.widget_result_text, View.GONE)
-        setViewVisibility(R.id.widget_progress, View.VISIBLE)
+      return RemoteViews(context.packageName, R.layout.coin_widget_loading).apply {
         setTextViewText(R.id.widget_subtitle, context.getString(R.string.coin_widget_loading_hint))
       }
     }
@@ -85,7 +84,6 @@ class CoinWidgetProvider : HomeWidgetProvider() {
         setViewVisibility(R.id.widget_emoji, View.GONE)
         setViewVisibility(R.id.widget_result_image, View.VISIBLE)
         setViewVisibility(R.id.widget_result_text, View.VISIBLE)
-        setViewVisibility(R.id.widget_progress, View.GONE)
         setImageViewResource(
             R.id.widget_result_image,
             if (isCara) R.drawable.coin_widget_cara else R.drawable.coin_widget_cruz)
