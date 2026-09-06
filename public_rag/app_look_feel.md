@@ -36,6 +36,17 @@ Actualización — 2026-09-03:
    desbordar la pantalla — ver "Historial — chips horizontales (L2)" más
    abajo.
 
+Actualización — 2026-09-05:
+
+6. Se agregó el widget de home screen de Android (ver `CLAUDE.md`, sección
+   "Widget de Android"). Reutiliza P1/P2 tal cual, sin paleta nueva, pero
+   con una limitación real de plataforma: `RemoteViews` no soporta blur ni
+   gradientes E2 con glow — el fondo del widget es un `<shape>` XML estático
+   por cara (gradiente vertical + borde de `accent` @ 45%, ver "Paleta
+   condicional" más abajo) y la única "animación" es un `ProgressBar`
+   indeterminado nativo durante la carga. Es una adaptación deliberada, no
+   un E2 incompleto — el widget no tiene sprites de giro a propósito.
+
 ## Principio rector
 
 La app se mantiene **Cupertino oscuro** (sin Material, sin fuentes de Google
@@ -65,6 +76,12 @@ falta retomarlo, es `accent: #8FA3C2` / `accentHighlight: #C7D2E0`.
 `glassTint` (`accent` @ 18% alpha) y `glassBorder` (`accent` @ 45% alpha) se
 derivan del `accent` en tiempo de uso — no se guardan como constantes
 aparte.
+
+**Duplicación fuera de Dart:** además de `generate_placeholders.dart`, el
+widget de Android (`android/app/src/main/res/drawable/coin_widget_bg_{cara,cruz}.xml`)
+también duplica estos hex a mano — un `AppWidgetProvider` nativo no puede
+importar `CoinPalette`. Si se retoca un valor acá, replicar en los tres
+lugares.
 
 ### Fondo condicional
 

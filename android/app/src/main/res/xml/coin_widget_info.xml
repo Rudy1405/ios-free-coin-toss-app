@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Metadata del widget "tiro rápido". Sin updatePeriodMillis porque el
+     único refresco es el que dispara el propio toque (ver CoinFlipTapReceiver
+     y CoinWidgetProvider), no hace falta que el sistema lo repinte solo. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="110dp"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/coin_widget"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:description="@string/coin_widget_description"
+    android:previewImage="@mipmap/ic_launcher">
+</appwidget-provider>

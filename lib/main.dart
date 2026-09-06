@@ -6,11 +6,13 @@ import 'core/theme.dart';
 import 'features/coin/coin_screen.dart';
 import 'features/history/history_provider.dart';
 import 'features/history/history_repository.dart';
+import 'features/widget/coin_widget_service.dart';
 import 'l10n/app_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
+  await initializeCoinWidget();
 
   final historyRepo = HistoryRepository();
   await historyRepo.init();

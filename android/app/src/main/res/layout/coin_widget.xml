@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Layout del widget "tiro rápido". Sin sprites de giro a propósito (ver
+     CLAUDE.md), solo alterna 3 grupos de vistas vía RemoteViews.setViewVisibility:
+     idle (widget_emoji), loading (widget_progress) y resultado
+     (widget_result_image + widget_result_text). widget_subtitle siempre
+     está visible, solo cambia el texto. Tamaños achicados a propósito para
+     que las 3 vistas del grupo de resultado entren en el mínimo de 110dp. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/coin_widget_bg_cara">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="8dp"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="8dp">
+
+        <TextView
+            android:id="@+id/widget_emoji"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/coin_widget_emoji"
+            android:textSize="40sp"
+            android:visibility="visible" />
+
+        <!-- Arte real (cara.png/cruz.png), no los sprites procedurales del
+             flip_sequence; ver CLAUDE.md, "Widget de Android". -->
+        <ImageView
+            android:id="@+id/widget_result_image"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginBottom="2dp"
+            android:visibility="gone"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:id="@+id/widget_result_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05"
+            android:visibility="gone" />
+
+        <ProgressBar
+            android:id="@+id/widget_progress"
+            style="?android:attr/progressBarStyleSmall"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/widget_subtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/coin_widget_tap_hint"
+            android:textSize="11sp"
+            android:textColor="#B3FFFFFF" />
+    </LinearLayout>
+</FrameLayout>
