@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 App Flutter "Cara o Cruz" (heads/tails). Paquete Dart `cara_o_cruz`, org `com.caracruz`. UI localizada según el idioma del sistema operativo (ver "Localización" más abajo; fallback a español), tema oscuro Cupertino (iOS-like). Reconstruida siguiendo la guía `../claude_deploy.md` (repo padre `toss_coin/`).
 
-Flujo: tap o swipe-up sobre la moneda → el resultado se sortea de inmediato con `Random.secure()` → la cara estática (arte real, ver `assets_ref/coins/`) se desvanece hacia la secuencia de giro (sprites procedurales, 36 frames, ~60fps, con motion blur creciente hacia las poses de canto) → la moneda cae en el frame que corresponde al resultado ya decidido y se desvanece de vuelta hacia la cara estática correspondiente → aparece una etiqueta glassmorphism con el resultado localizado ("CARA"/"CRUZ" en español, "HEADS"/"TAILS" en inglés) → el resultado se persiste en Hive y se muestra en una fila de historial con scroll horizontal (últimos 10, más reciente primero).
+Flujo: tap o swipe-up sobre la moneda → el resultado se sortea de inmediato con `Random.secure()` → la cara estática (arte real, ver `assets_ref/coins/`) se desvanece hacia la secuencia de giro (36 frames de arte real, ~60fps, con motion blur creciente hacia las poses de canto — ver "Assets de la moneda" en `public_rag/app_look_feel.md`) → la moneda cae en el frame que corresponde al resultado ya decidido y se desvanece de vuelta hacia la cara estática correspondiente → aparece una etiqueta glassmorphism con el resultado localizado ("CARA"/"CRUZ" en español, "HEADS"/"TAILS" en inglés) → el resultado se persiste en Hive y se muestra en una fila de historial con scroll horizontal (últimos 10, más reciente primero).
 
 Además, un botón hamburguesa en la esquina superior izquierda abre un panel lateral con un único ítem, "Acerca de" (localizado), que lleva a una pantalla informativa estática — ver "Navegación — menú y Acerca de" más abajo.
 
@@ -21,7 +21,7 @@ $env:Path += ";$env:USERPROFILE\flutter_sdk\flutter\bin"
 ```bash
 flutter pub get                         # instalar dependencias; también regenera lib/l10n/app_localizations*.dart (generate: true + l10n.yaml)
 flutter gen-l10n                        # regenerar solo las clases de localización (p.ej. tras editar un .arb), sin bajar dependencias
-dart run generate_placeholders.dart     # (re)generar los 36 PNG del flip_sequence; NO toca cara.png/cruz.png (arte real)
+dart run generate_placeholders.dart     # NO correr salvo que se quiera volver a placeholders procedurales -- flip_sequence/ ya es arte real, ver Gotchas
 flutter analyze                         # debe dar 0 issues
 flutter test                            # corre todos los tests
 flutter test test/coin_rng_service_test.dart   # un solo archivo de test
@@ -67,35 +67,50 @@ Flujo de estado entre capas, de arriba a abajo:
 
 **Multi-tap/multi-swipe durante el giro:** `CoinScreen._handleFlip()` detecta `status == flipping` y, en vez de ignorar el gesto o llamar a `startFlip()` de nuevo, llama a `CoinAnimationController.extendSpin()` — suma una rotación completa más al `Timer.periodic` ya corriendo (mismo timer, sin cancelarlo/recrearlo) en vez de arrancar un giro nuevo. El resultado sorteado en el primer tap **no cambia**: recalcularlo en cada tap permitiría re-tirar la moneda a fuerza de tapear rápido, lo cual rompe la garantía de "una sola tirada justa" que es el propósito de la app (ver el punto anterior). `extendSpin()` está acotado por `maxBonusRotations` (6) para que un usuario tapeando sin parar no deje la moneda girando indefinidamente, y no repite el sonido de "whoosh" en cada tap extra (reiniciar un clip de ~1s cada pocos milisegundos suena a corte, no a moneda girando) — en su lugar dispara un `HapticFeedback.lightImpact()` liviano solo cuando el tap efectivamente extendió el giro (no cuando ya se llegó al tope).
 
-**Crossfade cara-estática ↔ frames de giro:** `CoinScreen` dibuja dos `Image.asset` superpuestas (Stack) — una para la cara estática (arte real) y otra para el frame de giro actual — y cruza su opacidad con un `AnimationController` propio (`_crossfadeController`, 140ms al arrancar el giro, 220ms al aterrizar), separado del sequencer de frames por la misma razón de testabilidad que el rebote de aterrizaje (`_landingController`). Esto evita el corte brusco entre el arte detallado (estático) y los frames procedurales de baja fidelidad del `flip_sequence`.
+**Crossfade cara-estática ↔ frames de giro:** `CoinScreen` dibuja dos `Image.asset` superpuestas (Stack) — una para la cara estática (arte real) y otra para el frame de giro actual — y cruza su opacidad con un `AnimationController` propio (`_crossfadeController`, 140ms al arrancar el giro, 220ms al aterrizar), separado del sequencer de frames por la misma razón de testabilidad que el rebote de aterrizaje (`_landingController`). Esto evita el corte brusco entre la cara estática y el primer/último frame del `flip_sequence` (ambos son arte real, pero renderizados por separado).
 
 **Inyección de `HistoryRepository`:** se registra como `Provider` que lanza `UnimplementedError` por defecto y se sobreescribe en `main.dart` con la instancia real de Hive. Los tests (`widget_test.dart`) inyectan un `FakeHistoryRepository` de la misma forma, sin tocar Hive.
 
 ## Widget de Android (tiro rápido)
 
 Widget de home screen (`android/app/src/main/kotlin/com/caracruz/cara_o_cruz/`)
-para tirar la moneda sin abrir la app: sin la animación de giro de
-`CoinAnimationController`, solo un `ProgressBar` nativo mientras "carga" y el
-resultado. A propósito **no** usa `HistoryRepository`/Hive — es un tiro
-independiente, no aparece en el historial de la app.
+para tirar la moneda sin abrir la app: mientras "carga" muestra el mismo
+`flip_sequence` de 36 frames (arte real) que usa `CoinAnimationController`
+en la app, en chiquito (56dp), vía un `ViewFlipper` nativo — no una
+reimplementación de `CoinAnimationController`, es directamente el mismo
+arte duplicado como recurso Android (ver punto 2). A propósito **no** usa
+`HistoryRepository`/Hive — es un tiro independiente, no aparece en el
+historial de la app.
 
 Corre código Dart real (no es una reimplementación nativa del RNG) vía
 `registerInteractivityCallback` del paquete `home_widget`, que arranca un
 `FlutterEngine` headless al tocar el widget:
 
 1. `CoinWidgetProvider.kt` (`AppWidgetProvider`) arma el `RemoteViews` de
-   idle/resultado a partir de `widget_flip_result` (guardado por Dart vía
-   `HomeWidget.saveWidgetData`). El estado de loading **nunca** pasa por acá.
-   El estado de resultado muestra el arte real (`cara.png`/`cruz.png`,
-   duplicado en `res/drawable-nodpi/coin_widget_{cara,cruz}.png` porque un
-   `RemoteViews` no puede leer el asset bundle de Flutter) junto al texto
-   "CARA"/"CRUZ" — sin sprites de giro, a propósito.
+   idle/resultado (`res/layout/coin_widget.xml`) a partir de
+   `widget_flip_result` (guardado por Dart vía `HomeWidget.saveWidgetData`).
+   El estado de loading **nunca** pasa por acá, vive en un layout aparte
+   (`res/layout/coin_widget_loading.xml`, ver punto 2). El estado de
+   resultado muestra el arte real (`cara.png`/`cruz.png`, duplicado en
+   `res/drawable-nodpi/coin_widget_{cara,cruz}.png` porque un `RemoteViews`
+   no puede leer el asset bundle de Flutter) junto al texto "CARA"/"CRUZ".
 2. El toque no apunta al `HomeWidgetBackgroundReceiver` del plugin sino a
    `CoinFlipTapReceiver.kt`, un `BroadcastReceiver` propio y chico: pinta el
    loading al instante (sin esperar a Flutter, para que el widget nunca se
-   sienta trabado), le agrega `tappedAtMillis` a la URI del intent, y recién
-   ahí reenvía el trabajo a `HomeWidgetBackgroundService` (mismo mecanismo
-   interno del plugin) para que arranque el engine headless.
+   sienta trabado) inflando `coin_widget_loading.xml` — un `ViewFlipper`
+   (`android:autoStart="true"`, `flipInterval="30"`) con 36 `ImageView`
+   hijos, uno por frame de `flip_sequence/`, duplicados a mano como
+   `res/drawable-nodpi/coin_widget_flip_00..35.png` (mismo motivo que
+   `cara.png`/`cruz.png`: `RemoteViews` no lee el asset bundle de Flutter).
+   `ViewFlipper` es de los pocos widgets "vivos" que Android permite dentro
+   de un `AppWidget` — el host anima los hijos solo, sin que el proceso de
+   la app seguir corriendo. Layout separado a propósito de
+   `coin_widget.xml`: al pasar a idle/resultado se infla un `RemoteViews`
+   totalmente nuevo, así el `ViewFlipper` nunca queda escondido pero
+   corriendo de fondo. Después de pintar el loading, le agrega
+   `tappedAtMillis` a la URI del intent y recién ahí reenvía el trabajo a
+   `HomeWidgetBackgroundService` (mismo mecanismo interno del plugin) para
+   que arranque el engine headless.
 3. `coinWidgetFlipCallback` (`lib/features/widget/coin_widget_service.dart`)
    corre en ese engine: sortea con `CoinRngService` (la misma clase que usa
    la app) y espera lo que falte para completar ~1s reales desde
@@ -157,7 +172,7 @@ El proyecto ya tiene ambas carpetas de plataforma (`android/`, `ios/`) generadas
 - Compilar/correr para **Windows desktop o Android vía `flutter run`** requiere symlinks, lo que a su vez requiere "Modo de programador" activado en Windows (Configuración → Para desarrolladores). No se puede activar por script sin privilegios de administrador (clave en `HKLM`). **Web** (`flutter run -d chrome`) y `flutter analyze`/`flutter test` no lo necesitan — y, contra lo que decía antes esta sección, **`flutter build apk --debug` tampoco**: lo corrí de punta a punta con Modo de programador apagado y compiló bien.
 - Android SDK y Android Studio **sí están instalados** en esta máquina (`C:\Users\rudy1\AppData\Local\Android\Sdk`) — lo que falta para probar en vivo es un dispositivo conectado o un emulador que arranque; ver "Build Android / iOS" para el detalle del hypervisor driver que falta para el AVD `x86_64` existente. iOS no es compilable desde Windows (requiere macOS/Xcode).
 - `coin_screen.dart` calcula el tamaño de la moneda como `min(width*0.6, height*0.4).clamp(120, 400)` — **no** uses solo `screenWidth * 0.6` (como en el spec original), causa `RenderFlex overflow` en viewports anchos y bajos (ventanas de escritorio/navegador en landscape); se verificó y corrigió este bug durante la implementación inicial.
-- `generate_placeholders.dart` escribe PNGs a mano (sin paquete `image`) para no depender de nada fuera del SDK de Dart — mantiene esa restricción si se modifica.
-- `assets/coin/cara/cara.png` y `assets/coin/cruz/cruz.png` son arte real (recortado desde las referencias en `assets_ref/coins/`, con transparencia real extraída por flood-fill — las imágenes fuente NO tenían canal alfa real pese a ser PNG/tener fondo a cuadros). `generate_placeholders.dart` ya **no** los toca — solo regenera `flip_sequence/`. Si algún día se quiere volver a placeholders sólidos para esas dos caras, hay que reintroducir esas dos líneas a mano; no va a pasar por accidente.
+- `generate_placeholders.dart` escribe PNGs a mano (sin paquete `image`) para no depender de nada fuera del SDK de Dart — mantiene esa restricción si se modifica. **Ya no correr este script**: tanto `assets/coin/cara/cara.png`/`cruz.png` como los 36 frames de `assets/coin/flip_sequence/` son arte real desde 2026-09-06 (antes solo las dos caras lo eran, `flip_sequence/` era procedural). El script sigue en el repo solo como referencia histórica/para volver a placeholders a propósito — correrlo por error sobreescribiría los 36 frames reales con óvalos procedurales.
+- `assets/coin/cara/cara.png` y `assets/coin/cruz/cruz.png` son arte real (recortado desde las referencias en `assets_ref/coins/`, con transparencia real extraída por flood-fill — las imágenes fuente NO tenían canal alfa real pese a ser PNG/tener fondo a cuadros). Los 36 frames de `assets/coin/flip_sequence/` vinieron de `assets/new_coin_assets/` (arte real ya con squish/motion-blur horneado, mismo choreography que documentaba el script: cara nítida en 00/34-35, canto borroso en ~08-11 y ~26-29, cruz nítida en ~16-19) y reemplazaron a los placeholders procedurales — ver el commit que agregó esta nota. `assets/new_coin_assets/` (con el `contact_sheet.png` de referencia) es material de trabajo sin trackear en git — no un directorio gitignoreado a propósito, simplemente nadie lo agregó — quedó ahí como registro de dónde salió el arte nuevo; se puede borrar o commitear según se decida más adelante.
 - `_flipFrameCount` en `coin_screen.dart` debe coincidir con `_frameCount` en `generate_placeholders.dart` (ambos en 36) — están duplicados a propósito porque el script no puede importar código de la app (mismo patrón que la duplicación de `CoinPalette`).
-- `android/app/src/main/res/drawable-nodpi/coin_widget_{cara,cruz}.png` son copias manuales de `assets/coin/{cara,cruz}/*.png` — un `RemoteViews` nativo no puede leer el asset bundle de Flutter, así que el widget necesita su propia copia como recurso Android real. Si se retoca el arte de la moneda, recopiar esos dos archivos a mano; no se regeneran solos.
+- `android/app/src/main/res/drawable-nodpi/coin_widget_{cara,cruz}.png` y `coin_widget_flip_00..35.png` son copias manuales de `assets/coin/{cara,cruz}/*.png` y `assets/coin/flip_sequence/frame_00..35.png` — un `RemoteViews` nativo no puede leer el asset bundle de Flutter, así que el widget necesita su propia copia de los 38 archivos como recursos Android reales. Si se retoca el arte de la moneda (cualquiera de las dos caras o cualquier frame), recopiar los archivos correspondientes a mano; no se regeneran solos.
