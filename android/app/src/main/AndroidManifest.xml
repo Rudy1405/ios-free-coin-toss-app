@@ -25,6 +25,30 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Widget de home screen "tiro rápido", ver CLAUDE.md. -->
+        <receiver
+            android:name=".CoinWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/coin_widget_info" />
+        </receiver>
+        <!-- Destino del toque del widget; no exportado porque solo nuestro
+             propio PendingIntent le apunta (ver CoinWidgetProvider.kt). -->
+        <receiver
+            android:name=".CoinFlipTapReceiver"
+            android:exported="false" />
+        <!-- JobIntentService del plugin home_widget: arranca el FlutterEngine
+             headless que corre coinWidgetFlipCallback (coin_widget_service.dart).
+             No se auto-registra desde el AAR del plugin, hace falta declararlo acá. -->
+        <service
+            android:name="es.antonborri.home_widget.HomeWidgetBackgroundService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="true" />
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
