@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Español: idioma original / fallback de la app (ver l10n.yaml). Mismos
+     textos que app_es.arb, no se importan esas claves acá porque el
+     widget nativo no puede leer .arb, así que se duplican a mano. -->
+<resources>
+    <string name="coin_widget_label">Cara o Cruz</string>
+    <string name="coin_widget_description">Tira una moneda con un toque</string>
+    <string name="coin_widget_emoji">🪙</string>
+    <string name="coin_widget_tap_hint">Toca para tirar</string>
+    <string name="coin_widget_loading_hint">Lanzando…</string>
+    <string name="coin_widget_tap_again_hint">Toca para tirar de nuevo</string>
+    <string name="coin_widget_heads">CARA</string>
+    <string name="coin_widget_tails">CRUZ</string>
+</resources>

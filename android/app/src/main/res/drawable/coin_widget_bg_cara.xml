@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Paleta P1 ("Oro y Grafito") duplicada a mano desde CoinPalette.cara
+     (lib/core/theme.dart), un widget nativo no puede importar Dart, mismo
+     patrón que generate_placeholders.dart. Si se retoca el hex allá, replicar acá. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="20dp" />
+    <gradient
+        android:angle="270"
+        android:startColor="#19191D"
+        android:endColor="#101012" />
+    <stroke
+        android:width="1dp"
+        android:color="#73D6AD60" />
+</shape>
