@@ -43,9 +43,24 @@ Actualización — 2026-09-05:
    con una limitación real de plataforma: `RemoteViews` no soporta blur ni
    gradientes E2 con glow — el fondo del widget es un `<shape>` XML estático
    por cara (gradiente vertical + borde de `accent` @ 45%, ver "Paleta
-   condicional" más abajo) y la única "animación" es un `ProgressBar`
-   indeterminado nativo durante la carga. Es una adaptación deliberada, no
-   un E2 incompleto — el widget no tiene sprites de giro a propósito.
+   condicional" más abajo). En esta primera versión la única "animación" de
+   carga era un `ProgressBar` indeterminado nativo — ver el punto 8, que lo
+   reemplaza.
+
+Actualización — 2026-09-06:
+
+7. Los 36 frames de `flip_sequence/` dejaron de ser placeholders
+   procedurales (`generate_placeholders.dart`) y pasaron a ser arte real,
+   igual que `cara.png`/`cruz.png` — ver "Assets de la moneda" más abajo.
+   Sin cambios de paleta, material ni código: fue una sustitución 1:1 de
+   los 36 PNG (misma coreografía cara/canto/cruz/canto/cara).
+8. Con el arte nuevo del punto 7 ya validado en la app, el `ProgressBar`
+   del widget de Android (punto 6) se reemplazó por el mismo `flip_sequence`
+   en chiquito (56dp) vía un `ViewFlipper` nativo — ver `CLAUDE.md`, "Widget
+   de Android". El widget ya no es la excepción "sin sprites de giro" que
+   documentaba el punto 6; ahora comparte el mismo arte de giro que la app,
+   solo que a una escala mucho menor y sin el crossfade/rebote de aterrizaje
+   (esos siguen siendo exclusivos de `CoinScreen`, no del widget).
 
 ## Principio rector
 
@@ -107,32 +122,45 @@ en `idle` (antes del primer tiro) muestra el fondo P1 por defecto.
 
 ### Assets de la moneda
 
+**Actualización — 2026-09-06**: los 36 frames de `assets/coin/flip_sequence/`
+pasaron de ser placeholders procedurales (generados por
+`generate_placeholders.dart`, descripto abajo) a **arte real**, igual que
+`cara.png`/`cruz.png` ya lo eran. El arte nuevo vino de
+`assets/new_coin_assets/` (incluye un `contact_sheet.png` de referencia con
+los 36 frames en grilla) y respeta la misma coreografía que ya documentaba
+el script — cara nítida en `frame_00`, canto borroso hacia `frame_09`, cruz
+nítida en `frame_18`, canto borroso de nuevo hacia `frame_27`, vuelta a cara
+en `frame_35`/`frame_00` — así que el crossfade y el `CoinAnimationController`
+no necesitaron ningún cambio de código, solo se reemplazaron los 36 PNG.
+`generate_placeholders.dart` queda en el repo sin correrse más salvo que se
+quiera volver a placeholders a propósito (ver Gotchas en `CLAUDE.md`) — la
+descripción de su render de abajo es ahora historia de cómo se veían esos
+placeholders, no una fuente de verdad activa para `flip_sequence/`.
+
 `generate_placeholders.dart` ya no dibuja un cuadrado de color plano: renderiza
 a mano (sin el paquete `image`, ver Gotchas en `CLAUDE.md`) un círculo RGBA
 sombreado como metal — highlight desplazado arriba-izquierda, degradé hacia
 un borde más oscuro, un aro (`rim`) todavía más oscuro cerca del canto, y una
 sombra suave debajo — sobre fondo transparente. Mantiene **sus propios
 literales RGB** porque corre con `dart run` fuera del SDK de Flutter y no
-puede importar `CoinPalette`. Si se cambia un hex de paleta, hay que
-replicarlo a mano en `_caraColor`/`_cruzColor` de ese script y correr
-`dart run generate_placeholders.dart` para regenerar los 14 PNG.
+puede importar `CoinPalette`.
 
-Los 12 frames del giro (`flip_sequence/frame_00..11.png`) aplican, por
-frame `i`, un único ángulo `angle = i * π/6` (30° por frame, 360° en total)
-del que salen dos cosas a la vez:
+Los 36 frames del giro (`flip_sequence/frame_00..35.png`) aplicaban, por
+frame `i`, un único ángulo `angle = i * 2π/36` (10° por frame, 360° en total)
+del que salían dos cosas a la vez:
 
 - **Squish vertical** — `squish = |cos(angle)|` (con piso 0.08 para que el
-  canto nunca desaparezca del todo) simula la moneda tumbando de punta a
+  canto nunca desaparezca del todo) simulaba la moneda tumbando de punta a
   punta en el aire (no girando plana como un trompo, que sería squish
-  horizontal): alto completo en `frame_00` (cara) y `frame_06` (cruz), una
-  elipse achatada casi nula en `frame_03`/`frame_09` (de canto).
-- **Blend de color** — `colorT = (1 - cos(angle)) / 2` mezcla `_caraColor`
-  → `_cruzColor` con el mismo ángulo, y el canto además se oscurece
+  horizontal): alto completo en `frame_00` (cara) y `frame_18` (cruz), una
+  elipse achatada casi nula en `frame_09`/`frame_27` (de canto).
+- **Blend de color** — `colorT = (1 - cos(angle)) / 2` mezclaba `_caraColor`
+  → `_cruzColor` con el mismo ángulo, y el canto además se oscurecía
   (`edgeShade`) porque una moneda de canto está en sombra.
 
-Si se retoca el sombreado (highlight, rim, sombra) o el squish, hacerlo en
-`_writeCoin`/`main()` de `generate_placeholders.dart` — es la única fuente
-de verdad para el render, no hay assets de arte por fuera de este script.
+Esta lógica sigue en `_writeCoin`/`main()` de `generate_placeholders.dart`
+por si algún día hace falta volver a placeholders, pero ya no es la fuente
+de verdad del `flip_sequence/` actual (ver actualización arriba).
 
 ## Material — vidrio con relieve (E2)
 

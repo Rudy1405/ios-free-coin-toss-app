@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Layout del widget "tiro rápido". Sin sprites de giro a propósito (ver
-     CLAUDE.md), solo alterna 3 grupos de vistas vía RemoteViews.setViewVisibility:
-     idle (widget_emoji), loading (widget_progress) y resultado
-     (widget_result_image + widget_result_text). widget_subtitle siempre
-     está visible, solo cambia el texto. Tamaños achicados a propósito para
-     que las 3 vistas del grupo de resultado entren en el mínimo de 110dp. -->
+<!-- Layout de los estados idle y resultado del widget "tiro rápido"; el
+     estado de loading vive en coin_widget_loading.xml (ViewFlipper propio),
+     no acá. Alterna 2 grupos de vistas vía RemoteViews.setViewVisibility:
+     idle (widget_emoji) y resultado (widget_result_image + widget_result_text).
+     widget_subtitle siempre está visible, solo cambia el texto. Tamaños
+     achicados a propósito para que las vistas del grupo de resultado entren
+     en el mínimo de 110dp. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
@@ -44,13 +45,6 @@
             android:textSize="18sp"
             android:textStyle="bold"
             android:letterSpacing="0.05"
-            android:visibility="gone" />
-
-        <ProgressBar
-            android:id="@+id/widget_progress"
-            style="?android:attr/progressBarStyleSmall"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
             android:visibility="gone" />
 
         <TextView
